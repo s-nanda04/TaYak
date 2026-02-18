@@ -37,11 +37,3 @@ The project follows a full-stack development approach with a Python backend serv
 | **Leaderboard** | Community and personal stats | Top overall contributors (most posts), top topics (most posts), most upvoted posts — all visualized with Matplotlib graphs | Authenticated users |
 | **Personal Leaderboard** | Individual engagement tracking | Top interactions with team members, number of posts contributed | Authenticated users |
 
-### Backend & API Features
-
-#### Database Design
-
-- **users** — id, username, email, password_hash, created_at
-- **topics** — id, name, created_by, created_at
-- **posts** — id, user_id, topic_id, content, created_at
-- **votes** — id, user_id, post_id, vote_type (upvote/downvote), created_at
