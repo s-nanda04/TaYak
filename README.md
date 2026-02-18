@@ -1,1 +1,52 @@
-# TaYak
+# Genga - Anime Discussion Forum
+
+## Project Overview
+
+Genga is an anime community discussion platform where users can create posts under topics, upvote/downvote content, and track engagement through leaderboards. The app combines a social forum experience with data-driven visualizations to highlight top contributors and trending topics.
+
+### Approach
+
+The project follows a full-stack development approach with a Python backend serving a frontend built progressively with HTML, CSS, and JavaScript. Development will be iterative — starting with authentication and core posting features, then adding voting mechanics and leaderboard visualizations.
+
+### Architecture
+
+**User Side:**
+- Log in and authenticate to access the platform
+- Create posts under existing topics or create new topics
+- Upvote and downvote posts from other users
+- View leaderboards with Matplotlib-generated graphs
+- Track personal stats (posts contributed, interactions)
+
+**Admin Side:**
+- Manage topics and moderate posts
+- View platform-wide analytics and engagement data
+- Remove inappropriate content or users
+
+### Development Practices
+
+- **Git workflows:** Feature branching, pull requests, and code reviews for collaborative development
+- **Frontend progression:** HTML/CSS/JS for page structure, styling, and interactivity
+- **Backend services:** Python (Flask/FastAPI) for API logic and server-side rendering
+- **API integration & authentication:** RESTful API endpoints with session-based or token-based user authentication
+
+---
+
+## Project Scope
+
+### User-Facing Features
+
+| Page | Purpose | Features | Users |
+|------|---------|----------|-------|
+| **Home / Login** | Authentication entry point | User login, signup, session management | All users |
+| **Chat / Forum Page** | Main discussion board | Create posts, select existing topic or create new topic, upvote/downvote posts, browse posts by topic | Authenticated users |
+| **Leaderboard** | Community and personal stats | Top overall contributors (most posts), top topics (most posts), most upvoted posts — all visualized with Matplotlib graphs | Authenticated users |
+| **Personal Leaderboard** | Individual engagement tracking | Top interactions with team members, number of posts contributed | Authenticated users |
+
+### Backend & API Features
+
+#### Database Design
+
+- **users** — id, username, email, password_hash, created_at
+- **topics** — id, name, created_by, created_at
+- **posts** — id, user_id, topic_id, content, created_at
+- **votes** — id, user_id, post_id, vote_type (upvote/downvote), created_at
