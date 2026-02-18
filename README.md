@@ -1,9 +1,5 @@
-# Genga - Anime Discussion Forum
-
+#TaYak
 ## Project Overview
-
-Genga is an anime community discussion platform where users can create posts under topics, upvote/downvote content, and track engagement through leaderboards. The app combines a social forum experience with data-driven visualizations to highlight top contributors and trending topics.
-
 ### Approach
 
 The project follows a full-stack development approach with a Python backend serving a frontend built progressively with HTML, CSS, and JavaScript. Development will be iterative — starting with authentication and core posting features, then adding voting mechanics and leaderboard visualizations.
