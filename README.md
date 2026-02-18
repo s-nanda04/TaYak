@@ -1,4 +1,4 @@
-## Project Overview
+## TaYak
 ### Approach
 
 The project follows a full-stack development approach with a Python backend serving a frontend built progressively with HTML, CSS, and JavaScript. Development will be iterative — starting with authentication and core posting features, then adding voting mechanics and leaderboard visualizations.
