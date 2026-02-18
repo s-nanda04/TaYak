@@ -21,9 +21,7 @@ The project follows a full-stack development approach with a Python backend serv
 
 - **Git workflows:** Feature branching, pull requests, and code reviews for collaborative development
 - **Frontend progression:** HTML/CSS/JS for page structure, styling, and interactivity
-- **Backend services:** Python (Flask/FastAPI) for API logic and server-side rendering
-- **API integration & authentication:** RESTful API endpoints with session-based or token-based user authentication
-
+- **Backend services:** Python
 ---
 
 ## Project Scope
