@@ -35,3 +35,6 @@ The project follows a full-stack development approach with a Python backend serv
 | **Leaderboard** | Community and personal stats | Top overall contributors (most posts), top topics (most posts), most upvoted posts — all visualized with Matplotlib graphs | Authenticated users |
 | **Personal Leaderboard** | Individual engagement tracking | Top interactions with team members, number of posts contributed | Authenticated users |
 
+
+**Database Design**
+-TBD
