@@ -1,4 +1,3 @@
-#TaYak
 ## Project Overview
 ### Approach
 
