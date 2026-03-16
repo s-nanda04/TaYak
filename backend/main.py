@@ -12,12 +12,11 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
+"""
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set in the environment")
-
+"""
 app = FastAPI(title="TaYak API")
-z
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -31,6 +30,11 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 class LoginRequest(BaseModel):
     username: str
+    password: str
+
+
+class SignupRequest(BaseModel):
+    email: str
     password: str
 
 
@@ -53,6 +57,26 @@ class LeaderboardResponse(BaseModel):
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.post("/signup")
+def signup(body: SignupRequest):
+    """
+    Create a new user in Supabase Auth.
+    """
+    try:
+        response = supabase.auth.sign_up(
+            {
+                "email": body.email,
+                "password": body.password,
+            }
+        )
+        if response.user:
+            return {"success": True, "user_id": response.user.id}
+    except Exception as e:
+        print(f"Supabase signup error: {e}")
+        raise HTTPException(status_code=400, detail="Signup failed")
+    return {"success": False, "error": "Signup failed"}
 
 
 @app.post("/login")
