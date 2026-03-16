@@ -1,35 +1,57 @@
-"use client";
-
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function Home() {
+export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
+  const handleLogin = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("http://localhost:8000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        navigate("/feed");
+      } else {
+        setError("Invalid username or password");
+      }
+    } catch {
+      setError("Could not connect to server. Is the backend running?");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
       <div style={{
           minHeight: "100vh",
-          backgroundColor: "white",
+          backgroundColor: "black",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          paddingBottom: "50px"
+          paddingBottom: "50px",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
         }}
       >
-        {/* Your existing TaYak header, socials, and bio go here */}
-        <div style={{ marginTop: "50px", textAlign: "center" }}>
-          <h1 style={{ fontSize: "48px", fontWeight: "bold", color: "green" }}>
-            Welcome to TaYak!</h1>
-          
+        <div style={{ marginTop: "50px", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #FF3B3B, #C0392B)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 16, color: "#fff" }}>TY</div>
+          <span style={{ fontWeight: 800, fontSize: 26, color: "#fff", letterSpacing: -0.3 }}>TaYak</span>
         </div>
-        {/* --- Start of Form Container --- */}
+
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", marginTop: "20px" }}>
-          
+
           {/* Username Group */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
-            <label htmlFor="username" style={{ fontWeight: "bold" }}>Enter Username:</label>
+            <label htmlFor="username" style={{ fontWeight: "bold", color: "white" }}>Enter Email:</label>
             <input
               id="username"
               type="text"
@@ -48,13 +70,14 @@ export default function Home() {
 
           {/* Password Group */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "5px" }}>
-            <label htmlFor="password" style={{ fontWeight: "bold" }}>Enter Password:</label>
+            <label htmlFor="password" style={{ fontWeight: "bold", color: "white" }}>Enter Password:</label>
             <input
               id="password"
-              type="password" // Change to "password" to hide the dots!
+              type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               style={{
                 padding: "10px",
                 borderRadius: "8px",
@@ -65,29 +88,34 @@ export default function Home() {
             />
           </div>
 
+          {/* Error message */}
+          {error && (
+            <p style={{ color: "#ff6b6b", fontSize: "14px", margin: 0 }}>{error}</p>
+          )}
+
           {/* Login and Signup Buttons */}
           <div style={{ display: "flex", gap: "15px", marginTop: "20px" }}>
             <button
+              onClick={handleLogin}
+              disabled={loading}
               style={{
                 padding: "12px 30px",
-                backgroundColor: "green",
+                backgroundColor: loading ? "#888" : "red",
                 color: "white",
                 border: "none",
                 borderRadius: "8px",
                 fontSize: "16px",
                 fontWeight: "bold",
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
                 transition: "background-color 0.3s"
               }}
-              
             >
-              Login
+              {loading ? "Logging in..." : "Login"}
             </button>
             <button
-             
               style={{
                 padding: "12px 30px",
-                backgroundColor: "#4CAF50",
+                backgroundColor: "#e53935",
                 color: "white",
                 border: "none",
                 borderRadius: "8px",
@@ -96,15 +124,12 @@ export default function Home() {
                 cursor: "pointer",
                 transition: "background-color 0.3s"
               }}
-             
             >
               Signup
             </button>
           </div>
 
-        </div> 
-        {/* --- End of Form Container --- */}
-
+        </div>
       </div>
     </>
   );

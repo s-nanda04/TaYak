@@ -1,52 +1,15 @@
 import { useState, useEffect } from "react";
 
-const EMOJIS = ["🦊","🐸","🦉","🐙","🦋","🐺","🦄","🐲","🎭","🌶️","🔥","💀","👻","🤖","👽","🎪","🦑","🐍","🦇","🌙","🎯","🧊","🪐","🌊","🍄"];
-const COLORS = ["#FF3B3B","#FF6B6B","#FF4757","#E84118","#C0392B","#ff5252","#d63031","#e17055","#ff7675","#fab1a0"];
+const API = "http://localhost:8000";
 
-const texts = [
-  "anyone else's wifi absolutely destroyed rn or just me 💀",
-  "prof said 'this won't be on the exam' and then put it on the exam. classic.",
-  "the dining hall pizza hit different at 2am ngl",
-  "whoever is blasting music in the library pls stop I am begging",
-  "just saw someone walking their cat on a leash. respect.",
-  "if you're in ECON 101 and you keep asking questions... we all have places to be",
-  "hot take: morning classes should be illegal",
-  "the squirrels on campus are getting way too bold. one tried to fight me for my sandwich",
-  "shoutout to the person who left their charger in the study room. you saved my life",
-  "why does every group project have that one person who ghosts the entire semester",
-  "just submitted an assignment 30 seconds before the deadline. my heart rate was 180",
-  "the campus sunset rn is insane go outside and look 🌅",
-  "unpopular opinion: the library basement is the best study spot on campus",
-  "whoever invented 8am finals deserves jail time",
-  "there's a dog outside the student center. this is not a drill. GO NOW.",
-  "me: I'll start studying early this time\nalso me: *starts at 11pm the night before*",
-  "the vending machine on 3rd floor ate my dollar again. that's the 4th time this month",
-  "anyone wanna start a study group for discrete math? I'm so lost",
-  "imagine paying tuition just to watch youtube lectures at home",
-  "that feeling when you walk into the wrong classroom and just... commit to it",
-  "the construction outside my dorm at 7am is my villain origin story",
-  "friendly reminder to drink water. yes you. right now.",
-  "just had the most awkward elevator ride of my life. 47 floors of silence.",
-  "who left their laundry in the dryer for 3 days?? I just want to do my clothes",
-  "the campus cat showed up to my study session. best study buddy ever 🐱",
-  "normalize napping between classes. I need a campus nap pod.",
-  "the way everyone speed walks to class when it's 20 degrees out is honestly hilarious",
-  "to the person microwaving fish in the common room: why do you hate us",
-  "just realized I've been going to the wrong recitation for 3 weeks. THREE WEEKS.",
-  "campus at 3am hits different. it's giving liminal space.",
-];
-
-const generateYaks = (count, startId = 0) => {
-  return Array.from({ length: count }, (_, i) => ({
-    id: startId + i,
-    text: texts[(startId + i) % texts.length],
-    emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
-    color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    votes: Math.floor(Math.random() * 300) - 30,
-    comments: Math.floor(Math.random() * 45),
-    time: `${Math.floor(Math.random() * 59) + 1}m`,
-    isNew: Math.random() > 0.5,
-  }));
+const getRelativeTime = (isoString) => {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
 };
 
 const useWindowSize = () => {
@@ -71,7 +34,7 @@ const YakCard = ({ yak, onVote, isLast }) => {
     onVote(yak.id, nv - userVote);
   };
 
-  const voteTotal = yak.votes + userVote;
+  const voteTotal = yak.votes;
 
   return (
     <div style={{
@@ -86,7 +49,7 @@ const YakCard = ({ yak, onVote, isLast }) => {
           fontSize: 19, flexShrink: 0,
           border: `2px solid ${yak.color}35`,
         }}>
-          {yak.emoji}
+          {yak.profile_pic}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <span style={{ color: "#555", fontSize: 12 }}>{yak.time} ago</span>
@@ -115,7 +78,7 @@ const YakCard = ({ yak, onVote, isLast }) => {
             </svg>
           </button>
           <span style={{
-            color: voteTotal > 0 ? "#FF3B3B" : voteTotal < 0 ? "#555" : "#777",
+            color: userVote === 1 ? "#FF3B3B" : userVote === -1 ? "#6C47FF" : "#777",
             fontWeight: 700, fontSize: 13, minWidth: 28, textAlign: "center",
             fontFamily: "'SF Mono', monospace",
           }}>
@@ -127,7 +90,7 @@ const YakCard = ({ yak, onVote, isLast }) => {
             transform: anim === -1 ? "scale(1.3)" : "scale(1)",
             transition: "all 0.15s ease",
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill={userVote === -1 ? "#888" : "none"} stroke={userVote === -1 ? "#888" : "#555"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={userVote === -1 ? "#6C47FF" : "none"} stroke={userVote === -1 ? "#6C47FF" : "#555"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
             </svg>
           </button>
@@ -163,14 +126,32 @@ export default function App() {
   const w = useWindowSize();
   const isDesktop = w >= 768;
   const [tab, setTab] = useState("new");
-  const [yaks, setYaks] = useState(() => generateYaks(25));
+  const [yaks, setYaks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/yaks`)
+      .then(r => r.json())
+      .then(data => { setYaks(data); setLoading(false); })
+      .catch(e => { console.error("Failed to load yaks", e); setLoading(false); });
+  }, []);
 
   const trendingYaks = [...yaks].sort((a, b) => b.votes - a.votes);
-  const newYaks = [...yaks].sort((a, b) => parseInt(a.time) - parseInt(b.time));
+  const newYaks = [...yaks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const displayYaks = tab === "new" ? newYaks : trendingYaks;
 
-  const handleVote = (id, delta) => {
+  const handleVote = async (id, delta) => {
     setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes + delta } : y));
+    try {
+      await fetch(`${API}/yaks/${id}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delta }),
+      });
+    } catch (e) {
+      console.error("Vote failed", e);
+      setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes - delta } : y));
+    }
   };
 
   const feedMaxWidth = isDesktop ? 600 : "100%";
@@ -243,10 +224,18 @@ export default function App() {
         maxWidth: isDesktop ? 600 : "100%",
         margin: "0 auto",
       }}>
-        {displayYaks.map((yak, i) => (
+        {loading ? (
+          <div style={{ textAlign: "center", color: "#555", padding: "60px 0", fontSize: 14 }}>
+            Loading yaks...
+          </div>
+        ) : displayYaks.length === 0 ? (
+          <div style={{ textAlign: "center", color: "#555", padding: "60px 0", fontSize: 14 }}>
+            No yaks yet. Be the first.
+          </div>
+        ) : displayYaks.map((yak, i) => (
           <YakCard
             key={yak.id}
-            yak={yak}
+            yak={{ ...yak, time: getRelativeTime(yak.created_at) }}
             onVote={handleVote}
             isLast={i === displayYaks.length - 1}
           />
