@@ -30,6 +30,28 @@ export default function Login() {
     }
   };
 
+  const handleSignup = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("http://localhost:8000/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: username, password }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        navigate("/feed");
+      } else {
+        setError(data.error || "Signup failed");
+      }
+    } catch {
+      setError("Could not connect to server. Is the backend running?");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <div style={{
@@ -113,19 +135,21 @@ export default function Login() {
               {loading ? "Logging in..." : "Login"}
             </button>
             <button
+              onClick={handleSignup}
+              disabled={loading}
               style={{
                 padding: "12px 30px",
-                backgroundColor: "#e53935",
+                backgroundColor: loading ? "#888" : "#e53935",
                 color: "white",
                 border: "none",
                 borderRadius: "8px",
                 fontSize: "16px",
                 fontWeight: "bold",
-                cursor: "pointer",
+                cursor: loading ? "not-allowed" : "pointer",
                 transition: "background-color 0.3s"
               }}
             >
-              Signup
+              {loading ? "Working..." : "Signup"}
             </button>
           </div>
 
