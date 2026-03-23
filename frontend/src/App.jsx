@@ -97,10 +97,15 @@ const YakCard = ({ yak, onVote, isLast }) => {
   );
 };
 
+const MAX_CHARS = 255;
+
 export default function App() {
   const [tab, setTab] = useState("new");
   const [yaks, setYaks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [composing, setComposing] = useState(false);
+  const [postText, setPostText] = useState("");
+  const [posting, setPosting] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/yaks`)
@@ -108,6 +113,28 @@ export default function App() {
       .then(data => { setYaks(data); setLoading(false); })
       .catch(e => { console.error("Failed to load yaks", e); setLoading(false); });
   }, []);
+
+  const handlePost = async () => {
+    const trimmed = postText.trim();
+    if (!trimmed || trimmed.length > MAX_CHARS) return;
+    setPosting(true);
+    try {
+      const res = await fetch(`${API}/yaks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: trimmed }),
+      });
+      if (!res.ok) throw new Error("Post failed");
+      const newYak = await res.json();
+      setYaks(prev => [newYak, ...prev]);
+      setPostText("");
+      setComposing(false);
+    } catch (e) {
+      console.error("Failed to create yak", e);
+    } finally {
+      setPosting(false);
+    }
+  };
 
   const trendingYaks = [...yaks].sort((a, b) => b.votes - a.votes);
   const newYaks = [...yaks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -200,12 +227,70 @@ export default function App() {
       </div>
 
       {/* FAB */}
-      <button className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 rounded-full bg-btn-primary border border-white/[0.14] shadow-card flex items-center justify-center z-50 transition-all duration-[90ms] ease-design hover:bg-btn-hover hover:shadow-toast active:bg-black active:scale-95">
+      <button
+        onClick={() => setComposing(true)}
+        className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 rounded-full bg-btn-primary border border-white/[0.14] shadow-card flex items-center justify-center z-50 transition-all duration-[90ms] ease-design hover:bg-btn-hover hover:shadow-toast active:bg-black active:scale-95"
+      >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ECECEC" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
       </button>
+
+      {/* Compose modal */}
+      {composing && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/16"
+            onClick={() => { if (!posting) { setComposing(false); setPostText(""); } }}
+          />
+          <div className="relative w-full sm:max-w-[480px] bg-card border border-[#ECEDEF] sm:rounded-md rounded-t-md shadow-card mx-0 sm:mx-4 animate-toast-in">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-2">
+              <button
+                onClick={() => { if (!posting) { setComposing(false); setPostText(""); } }}
+                className="text-body-sm text-txt-secondary hover:text-txt-primary transition-colors duration-[120ms]"
+              >
+                Cancel
+              </button>
+              <span className="font-semibold text-body-md text-txt-primary">New Post</span>
+              <button
+                onClick={handlePost}
+                disabled={!postText.trim() || postText.length > MAX_CHARS || posting}
+                className="px-3.5 py-1.5 bg-btn-primary text-btn-primary-text text-btn-md rounded-xs border border-white/[0.14] transition-all duration-[90ms] ease-design hover:bg-btn-hover active:bg-black disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {posting ? "Posting…" : "Post"}
+              </button>
+            </div>
+
+            {/* Textarea */}
+            <div className="px-5 pb-2">
+              <textarea
+                autoFocus
+                value={postText}
+                onChange={e => {
+                  if (e.target.value.length <= MAX_CHARS) setPostText(e.target.value);
+                }}
+                placeholder="What's on your mind?"
+                maxLength={MAX_CHARS}
+                rows={4}
+                className="w-full resize-none bg-transparent text-body-md text-txt-primary placeholder:text-placeholder outline-none leading-relaxed"
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end px-5 pb-4">
+              <span className={`text-caption font-mono ${
+                postText.length > MAX_CHARS * 0.9
+                  ? postText.length >= MAX_CHARS ? "text-error-text" : "text-[#A06A2A]"
+                  : "text-txt-tertiary"
+              }`}>
+                {postText.length}/{MAX_CHARS}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
