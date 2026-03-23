@@ -167,7 +167,7 @@ export default function App() {
       </div>
 
       {/* Top nav */}
-      <div className="sticky top-0 z-50 bg-app/80 backdrop-blur-xl border-b border-subtle">
+      <div className="sticky top-0 z-50 bg-app/60 backdrop-blur-2xl border-b border-white/20">
         <div className="max-w-[600px] mx-auto px-5">
           <div className="flex items-center justify-between h-14">
             {/* Left: hamburger + logo */}
@@ -184,7 +184,7 @@ export default function App() {
             </div>
 
             {/* Right: tab pills */}
-            <div className="flex items-center bg-surface rounded-sm p-0.5">
+            <div className="flex items-center liquid-glass p-[3px] gap-[2px]">
               {[
                 { key: "new", label: "Unread" },
                 { key: "trending", label: "Trending" },
@@ -192,10 +192,10 @@ export default function App() {
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`px-3.5 py-1.5 text-body-sm rounded-xs transition-all duration-[120ms] ease-design ${
+                  className={`px-4 py-[6px] text-body-sm transition-all duration-[140ms] ease-design ${
                     tab === t.key
-                      ? "bg-card text-txt-primary shadow-card font-semibold"
-                      : "text-txt-secondary hover:text-txt-primary"
+                      ? "liquid-glass-pill text-txt-primary font-semibold"
+                      : "text-txt-secondary hover:text-txt-primary rounded-full"
                   }`}
                 >
                   {t.label}
@@ -233,9 +233,9 @@ export default function App() {
       {/* FAB */}
       <button
         onClick={() => setComposing(true)}
-        className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 rounded-full bg-btn-primary border border-white/[0.14] shadow-card flex items-center justify-center z-50 transition-all duration-[90ms] ease-design hover:bg-btn-hover hover:shadow-toast active:bg-black active:scale-95"
+        className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
       >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ECECEC" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
@@ -261,7 +261,7 @@ export default function App() {
               <button
                 onClick={handlePost}
                 disabled={!postText.trim() || postText.length > MAX_CHARS || posting}
-                className="px-3.5 py-1.5 bg-btn-primary text-btn-primary-text text-btn-md rounded-xs border border-white/[0.14] transition-all duration-[90ms] ease-design hover:bg-btn-hover active:bg-black disabled:opacity-40 disabled:pointer-events-none"
+                className="px-5 py-[6px] liquid-glass-on-card text-txt-primary text-btn-md font-semibold disabled:opacity-40 disabled:pointer-events-none"
               >
                 {posting ? "Posting…" : "Post"}
               </button>
