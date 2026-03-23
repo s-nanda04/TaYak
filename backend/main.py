@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
@@ -45,7 +45,7 @@ class ResendRequest(BaseModel):
 
 
 class VoteRequest(BaseModel):
-    delta: int
+    vote_value: int  # 1 (upvote), -1 (downvote), or 0 (remove vote)
 
 
 class YakCreate(BaseModel):
@@ -140,11 +140,41 @@ def login(body: LoginRequest):
         ) from e
 
 
+def get_user_id_from_token(authorization: Optional[str]) -> Optional[str]:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[len("Bearer "):]
+    try:
+        user_resp = supabase.auth.get_user(token)
+        if user_resp and user_resp.user:
+            return user_resp.user.id
+    except Exception as e:
+        print(f"Token verification failed: {e}")
+    return None
+
+
 @app.get("/yaks")
-def get_yaks():
+def get_yaks(authorization: Optional[str] = Header(None)):
     try:
         response = supabase.table("yaks").select("*").order("created_at", desc=True).execute()
-        return response.data
+        yaks = response.data
+
+        user_id = get_user_id_from_token(authorization)
+        if user_id:
+            votes_resp = (
+                supabase.table("yak_votes")
+                .select("yak_id, vote_value")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            user_votes = {v["yak_id"]: v["vote_value"] for v in (votes_resp.data or [])}
+            for yak in yaks:
+                yak["user_vote"] = user_votes.get(yak["id"], 0)
+        else:
+            for yak in yaks:
+                yak["user_vote"] = 0
+
+        return yaks
     except Exception as e:
         print(f"Error fetching yaks: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch yaks") from e
@@ -180,19 +210,36 @@ def create_yak(body: YakCreate):
 
 
 @app.post("/yaks/{yak_id}/vote")
-def vote_yak(yak_id: str, body: VoteRequest):
-    if body.delta not in (-2, -1, 0, 1, 2):
-        raise HTTPException(status_code=400, detail="Invalid delta")
+def vote_yak(yak_id: str, body: VoteRequest, authorization: Optional[str] = Header(None)):
+    if body.vote_value not in (-1, 0, 1):
+        raise HTTPException(status_code=400, detail="vote_value must be -1, 0, or 1")
+
+    user_id = get_user_id_from_token(authorization)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required to vote")
+
     try:
-        result = supabase.table("yaks").select("votes").eq("id", yak_id).single().execute()
-        data = result.data
-        if not isinstance(data, dict):
+        yak_check = supabase.table("yaks").select("id").eq("id", yak_id).single().execute()
+        if not yak_check.data:
             raise HTTPException(status_code=404, detail="Yak not found")
-        current_votes = data.get("votes", 0)
-        if not isinstance(current_votes, (int, float)):
-            current_votes = 0
-        new_votes = int(current_votes) + body.delta
+
+        if body.vote_value == 0:
+            supabase.table("yak_votes").delete().eq("user_id", user_id).eq("yak_id", yak_id).execute()
+        else:
+            supabase.table("yak_votes").upsert(
+                {"user_id": user_id, "yak_id": yak_id, "vote_value": body.vote_value},
+                on_conflict="user_id,yak_id",
+            ).execute()
+
+        votes_sum_resp = (
+            supabase.table("yak_votes")
+            .select("vote_value")
+            .eq("yak_id", yak_id)
+            .execute()
+        )
+        new_votes = sum(v["vote_value"] for v in (votes_sum_resp.data or []))
         supabase.table("yaks").update({"votes": new_votes}).eq("id", yak_id).execute()
+
         return {"success": True, "votes": new_votes}
     except HTTPException:
         raise

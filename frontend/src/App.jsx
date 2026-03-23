@@ -27,15 +27,20 @@ const getColorForId = (id) => {
 };
 
 const YakCard = ({ yak, onVote, isLast }) => {
-  const [userVote, setUserVote] = useState(0);
+  const [userVote, setUserVote] = useState(yak.user_vote || 0);
   const [anim, setAnim] = useState(null);
+
+  useEffect(() => {
+    setUserVote(yak.user_vote || 0);
+  }, [yak.user_vote]);
 
   const handleVote = (dir) => {
     setAnim(dir);
     setTimeout(() => setAnim(null), 200);
-    const nv = userVote === dir ? 0 : dir;
-    setUserVote(nv);
-    onVote(yak.id, nv - userVote);
+    const newVote = userVote === dir ? 0 : dir;
+    const delta = newVote - userVote;
+    setUserVote(newVote);
+    onVote(yak.id, newVote, delta);
   };
 
   return (
@@ -148,7 +153,9 @@ export default function App() {
   useEffect(() => { window.addEventListener("resize", updateIndicator); return () => window.removeEventListener("resize", updateIndicator); }, [tab]);
 
   useEffect(() => {
-    fetch(`${API}/yaks`)
+    const token = localStorage.getItem("token");
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(`${API}/yaks`, { headers })
       .then(r => r.json())
       .then(data => { setYaks(data); setLoading(false); })
       .catch(e => { console.error("Failed to load yaks", e); setLoading(false); });
@@ -180,17 +187,26 @@ export default function App() {
   const newYaks = [...yaks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const displayYaks = tab === "new" ? newYaks : trendingYaks;
 
-  const handleVote = async (id, delta) => {
-    setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes + delta } : y));
+  const handleVote = async (id, voteValue, delta) => {
+    setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes + delta, user_vote: voteValue } : y));
     try {
-      await fetch(`${API}/yaks/${id}/vote`, {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API}/yaks/${id}/vote`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delta }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ vote_value: voteValue }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error("Vote failed", err);
+        setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes - delta, user_vote: voteValue - delta } : y));
+      }
     } catch (e) {
       console.error("Vote failed", e);
-      setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes - delta } : y));
+      setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes - delta, user_vote: voteValue - delta } : y));
     }
   };
 
