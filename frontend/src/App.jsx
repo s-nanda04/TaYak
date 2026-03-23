@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Sidebar from "./components/Sidebar";
 
 const API = "http://localhost:8000";
 
@@ -106,6 +107,7 @@ export default function App() {
   const [composing, setComposing] = useState(false);
   const [postText, setPostText] = useState("");
   const [posting, setPosting] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${API}/yaks`)
@@ -156,6 +158,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-app font-sans relative">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       {/* Ambient blobs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
@@ -168,7 +172,7 @@ export default function App() {
           <div className="flex items-center justify-between h-14">
             {/* Left: hamburger + logo */}
             <div className="flex items-center gap-3.5">
-              <button className="flex flex-col gap-1 p-1 group">
+              <button onClick={() => setSidebarOpen(true)} className="flex flex-col gap-1 p-1 group">
                 <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
                 <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
                 <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
