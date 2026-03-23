@@ -1,1 +1,17 @@
-body { margin: 0; background: #0a0a0a; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: #EDEFF2;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input::placeholder {
+  color: #A4A8AF;
+}

@@ -12,16 +12,6 @@ const getRelativeTime = (isoString) => {
   return `${Math.floor(hours / 24)}d`;
 };
 
-const useWindowSize = () => {
-  const [w, setW] = useState(window.innerWidth);
-  useEffect(() => {
-    const h = () => setW(window.innerWidth);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
-  return w;
-};
-
 const YakCard = ({ yak, onVote, isLast }) => {
   const [userVote, setUserVote] = useState(0);
   const [anim, setAnim] = useState(null);
@@ -34,84 +24,69 @@ const YakCard = ({ yak, onVote, isLast }) => {
     onVote(yak.id, nv - userVote);
   };
 
-  const voteTotal = yak.votes;
-
   return (
-    <div style={{
-      padding: "16px 20px",
-      borderBottom: isLast ? "none" : "1px solid #1f1f1f",
-    }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: "50%",
-          background: `${yak.color}15`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 19, flexShrink: 0,
-          border: `2px solid ${yak.color}35`,
-        }}>
+    <div className={`px-5 py-4 ${isLast ? "" : "border-b border-subtle"}`}>
+      <div className="flex items-start gap-3">
+        {/* Avatar */}
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center text-[19px] shrink-0 border-2"
+          style={{
+            background: `${yak.color}12`,
+            borderColor: `${yak.color}30`,
+          }}
+        >
           {yak.profile_pic}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ color: "#555", fontSize: 12 }}>{yak.time} ago</span>
-          <p style={{
-            color: "#e0e0e0", fontSize: 15, lineHeight: 1.55,
-            margin: "6px 0 0", wordBreak: "break-word", whiteSpace: "pre-wrap",
-          }}>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <span className="text-caption text-txt-tertiary">{yak.time} ago</span>
+          <p className="text-body-md text-txt-primary mt-1 break-words whitespace-pre-wrap leading-relaxed">
             {yak.text}
           </p>
         </div>
       </div>
 
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        marginTop: 12, paddingLeft: 52,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <button onClick={() => handleVote(1)} style={{
-            background: "transparent", border: "none", cursor: "pointer",
-            padding: "5px 7px", borderRadius: 6, display: "flex", alignItems: "center",
-            transform: anim === 1 ? "scale(1.3)" : "scale(1)",
-            transition: "all 0.15s ease",
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill={userVote === 1 ? "#FF3B3B" : "none"} stroke={userVote === 1 ? "#FF3B3B" : "#555"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Actions */}
+      <div className="flex items-center justify-between mt-3 pl-[52px]">
+        {/* Votes */}
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => handleVote(1)}
+            className="p-1.5 rounded-xs flex items-center hover:bg-surface transition-colors duration-[120ms]"
+            style={{ transform: anim === 1 ? "scale(1.25)" : "scale(1)", transition: "transform 150ms ease" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={userVote === 1 ? "#2F79F7" : "none"} stroke={userVote === 1 ? "#2F79F7" : "#8D9098"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 19V5M5 12l7-7 7 7"/>
             </svg>
           </button>
-          <span style={{
-            color: userVote === 1 ? "#FF3B3B" : userVote === -1 ? "#6C47FF" : "#777",
-            fontWeight: 700, fontSize: 13, minWidth: 28, textAlign: "center",
-            fontFamily: "'SF Mono', monospace",
-          }}>
-            {voteTotal}
+          <span className={`font-bold text-body-sm min-w-[28px] text-center font-mono ${
+            userVote === 1 ? "text-blob-blue" : userVote === -1 ? "text-violet-edge" : "text-txt-secondary"
+          }`}>
+            {yak.votes}
           </span>
-          <button onClick={() => handleVote(-1)} style={{
-            background: "transparent", border: "none", cursor: "pointer",
-            padding: "5px 7px", borderRadius: 6, display: "flex", alignItems: "center",
-            transform: anim === -1 ? "scale(1.3)" : "scale(1)",
-            transition: "all 0.15s ease",
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill={userVote === -1 ? "#6C47FF" : "none"} stroke={userVote === -1 ? "#6C47FF" : "#555"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <button
+            onClick={() => handleVote(-1)}
+            className="p-1.5 rounded-xs flex items-center hover:bg-surface transition-colors duration-[120ms]"
+            style={{ transform: anim === -1 ? "scale(1.25)" : "scale(1)", transition: "transform 150ms ease" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={userVote === -1 ? "#5A2FD4" : "none"} stroke={userVote === -1 ? "#5A2FD4" : "#8D9098"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
             </svg>
           </button>
         </div>
 
-        <button style={{
-          background: "transparent", border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", gap: 5, padding: "5px 8px",
-          borderRadius: 6, color: "#555", fontSize: 13,
-        }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {/* Comments */}
+        <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-xs text-body-sm text-txt-secondary hover:bg-surface hover:text-txt-primary transition-colors duration-[120ms]">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
           </svg>
           {yak.comments}
         </button>
 
-        <button style={{
-          background: "transparent", border: "none", cursor: "pointer",
-          padding: "5px 7px", borderRadius: 6, display: "flex", alignItems: "center",
-        }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {/* Share */}
+        <button className="p-1.5 rounded-xs flex items-center text-txt-secondary hover:bg-surface hover:text-txt-primary transition-colors duration-[120ms]">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
             <polyline points="16 6 12 2 8 6"/>
             <line x1="12" y1="2" x2="12" y2="15"/>
@@ -123,8 +98,6 @@ const YakCard = ({ yak, onVote, isLast }) => {
 };
 
 export default function App() {
-  const w = useWindowSize();
-  const isDesktop = w >= 768;
   const [tab, setTab] = useState("new");
   const [yaks, setYaks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,63 +127,46 @@ export default function App() {
     }
   };
 
-  const feedMaxWidth = isDesktop ? 600 : "100%";
-
   return (
-    <div style={{
-      background: "#0a0a0a", minHeight: "100vh", color: "#fff",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    }}>
-      {/* TOP NAV */}
-      <div style={{
-        position: "sticky", top: 0, zIndex: 100,
-        background: "#0a0a0aee", backdropFilter: "blur(16px)",
-        borderBottom: "1px solid #1f1f1f",
-      }}>
-        <div style={{
-          maxWidth: isDesktop ? 600 : "100%",
-          margin: "0 auto",
-          padding: "0 20px",
-        }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "14px 0",
-          }}>
-            {/* Left: hamburger + logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <button style={{
-                background: "transparent", border: "none", cursor: "pointer",
-                padding: 4, display: "flex", flexDirection: "column", gap: 4,
-              }}>
-                <span style={{ width: 22, height: 2, background: "#ccc", borderRadius: 2, display: "block" }}/>
-                <span style={{ width: 22, height: 2, background: "#ccc", borderRadius: 2, display: "block" }}/>
-                <span style={{ width: 22, height: 2, background: "#ccc", borderRadius: 2, display: "block" }}/>
-              </button>
+    <div className="min-h-screen bg-app font-sans relative">
+      {/* Ambient blobs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
+        <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
+      </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{
-                  width: 30, height: 30, borderRadius: 8,
-                  background: "linear-gradient(135deg, #FF3B3B, #C0392B)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 900, fontSize: 13,
-                }}>TY</div>
-                <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: -0.3 }}>TaYak</span>
+      {/* Top nav */}
+      <div className="sticky top-0 z-50 bg-app/80 backdrop-blur-xl border-b border-subtle">
+        <div className="max-w-[600px] mx-auto px-5">
+          <div className="flex items-center justify-between h-14">
+            {/* Left: hamburger + logo */}
+            <div className="flex items-center gap-3.5">
+              <button className="flex flex-col gap-1 p-1 group">
+                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
+                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
+                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
+              </button>
+              <div className="flex items-center gap-2">
+                <img src="/tamid-logo.png" alt="TaYak" className="w-7 h-7 rounded-xs object-cover" />
+                <span className="font-extrabold text-[18px] text-txt-primary tracking-tight">TaYak</span>
               </div>
             </div>
 
-            {/* Right: Unread | Trending tabs */}
-            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            {/* Right: tab pills */}
+            <div className="flex items-center bg-surface rounded-sm p-0.5">
               {[
                 { key: "new", label: "Unread" },
                 { key: "trending", label: "Trending" },
               ].map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} style={{
-                  background: "transparent", border: "none",
-                  cursor: "pointer", padding: "6px 14px",
-                  fontSize: 14, fontWeight: 600,
-                  color: tab === t.key ? "#ffffff" : "#555",
-                  transition: "color 0.2s ease",
-                }}>
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-3.5 py-1.5 text-body-sm rounded-xs transition-all duration-[120ms] ease-design ${
+                    tab === t.key
+                      ? "bg-card text-txt-primary shadow-card font-semibold"
+                      : "text-txt-secondary hover:text-txt-primary"
+                  }`}
+                >
                   {t.label}
                 </button>
               ))}
@@ -219,58 +175,37 @@ export default function App() {
         </div>
       </div>
 
-      {/* FEED */}
-      <div style={{
-        maxWidth: isDesktop ? 600 : "100%",
-        margin: "0 auto",
-      }}>
-        {loading ? (
-          <div style={{ textAlign: "center", color: "#555", padding: "60px 0", fontSize: 14 }}>
-            Loading yaks...
-          </div>
-        ) : displayYaks.length === 0 ? (
-          <div style={{ textAlign: "center", color: "#555", padding: "60px 0", fontSize: 14 }}>
-            No yaks yet. Be the first.
-          </div>
-        ) : displayYaks.map((yak, i) => (
-          <YakCard
-            key={yak.id}
-            yak={{ ...yak, time: getRelativeTime(yak.created_at) }}
-            onVote={handleVote}
-            isLast={i === displayYaks.length - 1}
-          />
-        ))}
+      {/* Feed */}
+      <div className="relative z-10 max-w-[600px] mx-auto">
+        <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
+          {loading ? (
+            <div className="text-center text-txt-secondary py-16 text-body-md">
+              Loading yaks...
+            </div>
+          ) : displayYaks.length === 0 ? (
+            <div className="text-center text-txt-secondary py-16 text-body-md">
+              No yaks yet. Be the first.
+            </div>
+          ) : displayYaks.map((yak, i) => (
+            <YakCard
+              key={yak.id}
+              yak={{ ...yak, time: getRelativeTime(yak.created_at) }}
+              onVote={handleVote}
+              isLast={i === displayYaks.length - 1}
+            />
+          ))}
+        </div>
+        {/* Bottom spacer for FAB */}
+        <div className="h-24" />
       </div>
 
-      {/* FAB - New Yak Button (no compose implementation) */}
-      <button style={{
-        position: "fixed",
-        bottom: 28,
-        right: isDesktop ? "calc(50% - 320px)" : 20,
-        width: 56, height: 56, borderRadius: "50%",
-        background: "linear-gradient(135deg, #FF3B3B, #C0392B)",
-        border: "none", cursor: "pointer",
-        boxShadow: "0 4px 20px #FF3B3B55",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 50,
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-      }}
-        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; e.currentTarget.style.boxShadow = "0 6px 28px #FF3B3B77"; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 20px #FF3B3B55"; }}
-      >
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* FAB */}
+      <button className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 rounded-full bg-btn-primary border border-white/[0.14] shadow-card flex items-center justify-center z-50 transition-all duration-[90ms] ease-design hover:bg-btn-hover hover:shadow-toast active:bg-black active:scale-95">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ECECEC" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"/>
           <line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
       </button>
-
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        *{-webkit-tap-highlight-color:transparent; box-sizing:border-box;}
-        ::-webkit-scrollbar{width:0px}
-        button:active{opacity:0.7}
-        body{margin:0;padding:0;background:#0a0a0a}
-      `}</style>
     </div>
   );
 }
