@@ -1,42 +1,54 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
+
+const API = "http://localhost:8000";
 
 export default function Leaderboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const topPeople = [
-    { name: "Shaurya", posts: 34 },
-    { name: "Rio",     posts: 28 },
-    { name: "Vanessa", posts: 22 },
-    { name: "Shreya",  posts: 17 },
-  ];
+  useEffect(() => {
+    fetch(`${API}/leaderboard`)
+      .then(r => {
+        if (!r.ok) throw new Error("Failed to load leaderboard");
+        return r.json();
+      })
+      .then(json => { setData(json); setLoading(false); })
+      .catch(e => { console.error(e); setError(e.message); setLoading(false); });
+  }, []);
 
-  const topTopics = [
-    { topic: "Finance",     posts: 47 },
-    { topic: "Consulting",  posts: 38 },
-    { topic: "Tech",        posts: 31 },
-    { topic: "Career Tips", posts: 19 },
-  ];
+  const medals = ["🥇", "🥈", "🥉", "4.", "5.", "6.", "7.", "8.", "9.", "10."];
 
-  const topPosts = [
-    { text: "The carry trade strategy explained simply...", upvotes: 64 },
-    { text: "3 frameworks that helped me ace my case interview...", upvotes: 51 },
-    { text: "Why most Series A pitches fail at unit economics...", upvotes: 43 },
-  ];
+  const Section = ({ title, children }) => (
+    <>
+      <h2 className="text-body-sm font-semibold text-txt-secondary uppercase tracking-wider mb-3 px-1">
+        {title}
+      </h2>
+      <div className="bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden mb-6">
+        {children}
+      </div>
+    </>
+  );
 
-  const medals = ["🥇", "🥈", "🥉", "4."];
+  const Row = ({ left, right, index, total }) => (
+    <div className={`flex items-center gap-3 px-4 py-3 ${index < total - 1 ? "border-b border-subtle" : ""}`}>
+      <span className="text-[20px] w-8 text-center shrink-0">{medals[index]}</span>
+      <span className="flex-1 text-body-md text-txt-primary font-medium">{left}</span>
+      <span className="text-caption text-txt-tertiary">{right}</span>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-app font-sans relative">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Ambient blobs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
         <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
       </div>
 
-      {/* Top nav */}
       <div className="sticky top-0 z-50 bg-app/80 backdrop-blur-xl border-b border-subtle">
         <div className="max-w-[600px] mx-auto px-5">
           <div className="flex items-center justify-between h-14">
@@ -56,42 +68,42 @@ export default function Leaderboard() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="relative z-10 max-w-[600px] mx-auto px-3 md:px-0 pt-4 pb-10">
-        {/* Top Contributors */}
-        <h2 className="text-body-sm font-semibold text-txt-secondary uppercase tracking-wider mb-3 px-1">Top Contributors</h2>
-        <div className="bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden mb-6">
-          {topPeople.map((person, index) => (
-            <div key={index} className={`flex items-center gap-3 px-4 py-3 ${index < topPeople.length - 1 ? "border-b border-subtle" : ""}`}>
-              <span className="text-[20px] w-8 text-center shrink-0">{medals[index]}</span>
-              <span className="flex-1 text-body-md text-txt-primary font-medium">{person.name}</span>
-              <span className="text-caption text-txt-tertiary">{person.posts} posts</span>
-            </div>
-          ))}
-        </div>
+        {loading && (
+          <p className="text-center text-txt-secondary py-16 text-body-md">Loading leaderboard…</p>
+        )}
+        {error && (
+          <p className="text-center text-error-text py-16 text-body-md">{error}</p>
+        )}
+        {data && (
+          <>
+            <Section title="Top Contributors">
+              {data.top_contributors.map((p, i) => (
+                <Row key={p.name} left={p.name} right={`${p.posts} posts`} index={i} total={data.top_contributors.length} />
+              ))}
+            </Section>
 
-        {/* Top Topics */}
-        <h2 className="text-body-sm font-semibold text-txt-secondary uppercase tracking-wider mb-3 px-1">Top Topics</h2>
-        <div className="bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden mb-6">
-          {topTopics.map((item, index) => (
-            <div key={index} className={`flex items-center gap-3 px-4 py-3 ${index < topTopics.length - 1 ? "border-b border-subtle" : ""}`}>
-              <span className="text-[20px] w-8 text-center shrink-0">{medals[index]}</span>
-              <span className="flex-1 text-body-md text-txt-primary font-medium">{item.topic}</span>
-              <span className="text-caption text-txt-tertiary">{item.posts} posts</span>
-            </div>
-          ))}
-        </div>
+            <Section title="Top Topics">
+              {data.top_topics.map((t, i) => (
+                <Row key={t.topic} left={t.topic} right={`${t.posts} posts`} index={i} total={data.top_topics.length} />
+              ))}
+            </Section>
 
-        {/* Most Upvoted Posts */}
-        <h2 className="text-body-sm font-semibold text-txt-secondary uppercase tracking-wider mb-3 px-1">Most Upvoted Posts</h2>
-        <div className="bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
-          {topPosts.map((post, index) => (
-            <div key={index} className={`px-4 py-3 ${index < topPosts.length - 1 ? "border-b border-subtle" : ""}`}>
-              <p className="text-body-md text-txt-primary leading-relaxed">{post.text}</p>
-              <span className="text-caption text-blob-blue font-bold mt-1.5 inline-block">▲ {post.upvotes} upvotes</span>
+            <h2 className="text-body-sm font-semibold text-txt-secondary uppercase tracking-wider mb-3 px-1">
+              Most Upvoted Posts
+            </h2>
+            <div className="bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
+              {data.top_posts.map((post, i) => (
+                <div key={post.id} className={`px-4 py-3 ${i < data.top_posts.length - 1 ? "border-b border-subtle" : ""}`}>
+                  <p className="text-body-md text-txt-primary leading-relaxed">{post.text}</p>
+                  <span className="text-caption text-blob-blue font-bold mt-1.5 inline-block">
+                    ▲ {post.votes} upvotes
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
