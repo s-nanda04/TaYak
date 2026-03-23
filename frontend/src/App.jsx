@@ -13,6 +13,19 @@ const getRelativeTime = (isoString) => {
   return `${Math.floor(hours / 24)}d`;
 };
 
+const AVATARS = ["🦬", "🐻", "🦊", "🐸", "🐯", "🦁", "🐼", "🐨", "🐵", "🦄", "🐶", "🐱"];
+const COLORS = ["#2F79F7", "#5A2FD4", "#E5484D", "#30A46C", "#E38B2F", "#3B82F6", "#8B5CF6", "#EC4899"];
+
+const getAvatarForId = (id) => {
+  const hash = (id || "").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return AVATARS[hash % AVATARS.length];
+};
+
+const getColorForId = (id) => {
+  const hash = (id || "").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return COLORS[hash % COLORS.length];
+};
+
 const YakCard = ({ yak, onVote, isLast }) => {
   const [userVote, setUserVote] = useState(0);
   const [anim, setAnim] = useState(null);
@@ -252,7 +265,12 @@ export default function App() {
           ) : displayYaks.map((yak, i) => (
             <YakCard
               key={yak.id}
-              yak={{ ...yak, time: getRelativeTime(yak.created_at) }}
+              yak={{
+                ...yak,
+                time: getRelativeTime(yak.created_at),
+                profile_pic: yak.profile_pic || getAvatarForId(yak.id),
+                color: yak.color || getColorForId(yak.id),
+              }}
               onVote={handleVote}
               isLast={i === displayYaks.length - 1}
             />
