@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,7 +12,26 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
+  const [googleLoading, setGoogleLoading] = useState(false);
   const clearToasts = () => { setError(""); setSuccess(""); };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    clearToasts();
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) setError(error.message);
+    } catch {
+      setError("Could not start Google sign-in");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -287,7 +307,9 @@ export default function Login() {
             {/* Social button */}
             <button
               type="button"
-              className="w-full h-[33px] flex items-center justify-center gap-2 bg-card border border-btn-sec-border rounded-xs text-btn-md text-btn-sec-text transition-colors duration-[120ms] hover:border-txt-secondary"
+              onClick={handleGoogleLogin}
+              disabled={googleLoading}
+              className="w-full h-[33px] flex items-center justify-center gap-2 bg-card border border-btn-sec-border rounded-xs text-btn-md text-btn-sec-text transition-colors duration-[120ms] hover:border-txt-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg width="16" height="16" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -295,7 +317,7 @@ export default function Login() {
                 <path fill="#FBBC05" d="M10.53 28.59A14.5 14.5 0 019.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.97 23.97 0 000 24c0 3.77.9 7.35 2.56 10.53l7.97-5.94z"/>
                 <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.94C6.51 42.62 14.62 48 24 48z"/>
               </svg>
-              Google
+              {googleLoading ? "Redirecting..." : "Google"}
             </button>
 
             {/* Toggle mode */}

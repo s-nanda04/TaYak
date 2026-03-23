@@ -1,21 +1,20 @@
 import os
 from collections import Counter
+from pathlib import Path
 from typing import List, Optional
 
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-"""
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set in the environment")
-"""
+
 app = FastAPI(title="TaYak API")
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set in the environment")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -36,6 +38,10 @@ class LoginRequest(BaseModel):
 class SignupRequest(BaseModel):
     email: str
     password: str
+
+
+class ResendRequest(BaseModel):
+    email: str
 
 
 class VoteRequest(BaseModel):
@@ -63,6 +69,7 @@ def health_check():
 def signup(body: SignupRequest):
     """
     Create a new user in Supabase Auth.
+    Supabase sends a confirmation email automatically when confirm_email is enabled.
     """
     try:
         response = supabase.auth.sign_up(
@@ -72,25 +79,65 @@ def signup(body: SignupRequest):
             }
         )
         if response.user:
-            return {"success": True, "user_id": response.user.id}
+            needs_confirmation = response.session is None
+            return {
+                "success": True,
+                "user_id": response.user.id,
+                "needs_email_confirmation": needs_confirmation,
+            }
     except Exception as e:
-        print(f"Supabase signup error: {e}")
-        raise HTTPException(status_code=400, detail="Signup failed")
+        error_msg = str(e).lower()
+        print(f"Supabase signup error (type={type(e).__name__}): {e}")
+        print(f"Supabase signup error repr: {repr(e)}")
+        if "already registered" in error_msg or "already been registered" in error_msg:
+            raise HTTPException(status_code=400, detail="An account with this email already exists") from e
+        raise HTTPException(status_code=400, detail=f"Signup failed: {e}") from e
     return {"success": False, "error": "Signup failed"}
+
+
+@app.post("/resend-confirmation")
+def resend_confirmation(body: ResendRequest):
+    """Resend the Supabase Auth confirmation email."""
+    try:
+        supabase.auth.resend({"type": "signup", "email": body.email})
+        return {"success": True}
+    except Exception as e:
+        print(f"Resend confirmation error: {e}")
+        return {"success": False, "error": "Could not resend confirmation email"}
 
 
 @app.post("/login")
 def login(body: LoginRequest):
     try:
         email = body.username
-        print(f"Attempting login for: {email}")
-        response = supabase.auth.sign_in_with_password({"email": email, "password": body.password})
-        print(f"Supabase response user: {response.user}")
-        if response.user:
-            return {"success": True, "token": response.session.access_token}
+        response = supabase.auth.sign_in_with_password(
+            {"email": email, "password": body.password}
+        )
+        if response.user and response.session:
+            return {
+                "success": True,
+                "token": response.session.access_token,
+                "user_id": response.user.id,
+                "email": response.user.email,
+            }
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Supabase error: {e}")
-    return {"success": False, "error": "Invalid username or password"}
+        error_msg = str(e).lower()
+        print(f"Supabase login error: {e}")
+        if "email not confirmed" in error_msg:
+            raise HTTPException(
+                status_code=403,
+                detail="Please confirm your email before signing in",
+            ) from e
+        if "invalid" in error_msg and ("credentials" in error_msg or "login" in error_msg):
+            raise HTTPException(
+                status_code=401, detail="Invalid email or password"
+            ) from e
+        raise HTTPException(
+            status_code=401, detail="Invalid email or password"
+        ) from e
 
 
 @app.get("/yaks")
@@ -100,7 +147,7 @@ def get_yaks():
         return response.data
     except Exception as e:
         print(f"Error fetching yaks: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch yaks")
+        raise HTTPException(status_code=500, detail="Failed to fetch yaks") from e
 
 
 @app.post("/yaks")
@@ -129,7 +176,7 @@ def create_yak(body: YakCreate):
         return response.data[0]
     except Exception as e:
         print(f"Error creating yak: {e}")
-        raise HTTPException(status_code=500, detail="Failed to create yak")
+        raise HTTPException(status_code=500, detail="Failed to create yak") from e
 
 
 @app.post("/yaks/{yak_id}/vote")
@@ -138,13 +185,20 @@ def vote_yak(yak_id: str, body: VoteRequest):
         raise HTTPException(status_code=400, detail="Invalid delta")
     try:
         result = supabase.table("yaks").select("votes").eq("id", yak_id).single().execute()
-        current_votes = result.data["votes"]
-        new_votes = current_votes + body.delta
+        data = result.data
+        if not isinstance(data, dict):
+            raise HTTPException(status_code=404, detail="Yak not found")
+        current_votes = data.get("votes", 0)
+        if not isinstance(current_votes, (int, float)):
+            current_votes = 0
+        new_votes = int(current_votes) + body.delta
         supabase.table("yaks").update({"votes": new_votes}).eq("id", yak_id).execute()
         return {"success": True, "votes": new_votes}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error voting: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update vote")
+        raise HTTPException(status_code=500, detail="Failed to update vote") from e
 
 
 @app.get("/leaderboard", response_model=LeaderboardResponse)
@@ -160,7 +214,7 @@ def leaderboard():
         yaks = response.data or []
     except Exception as e:
         print(f"Error fetching yaks for leaderboard: {e}")
-        raise HTTPException(status_code=500, detail="Failed to build leaderboard")
+        raise HTTPException(status_code=500, detail="Failed to build leaderboard") from e
 
     contributor_counter: Counter[str] = Counter()
     topic_counter: Counter[str] = Counter()
@@ -198,4 +252,8 @@ def leaderboard():
         top_topics=top_topics,
         top_posts=top_posts,
     )
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 

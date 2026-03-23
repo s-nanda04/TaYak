@@ -1,0 +1,474 @@
+{
+  "meta": {
+    "name": "Luminous Auth Minimal",
+    "source": "Derived from login page idea video",
+    "intent": "Give AI precise design direction to reproduce the same visual language across the app",
+    "platform": [
+      "web-desktop-first",
+      "mobile-adaptable"
+    ]
+  },
+  "creative_direction": {
+    "brand_personality": [
+      "clean",
+      "calm",
+      "premium",
+      "trustworthy",
+      "lightweight"
+    ],
+    "design_keywords": [
+      "soft glow",
+      "frosted light canvas",
+      "minimal monochrome controls",
+      "blue ambient gradients",
+      "crisp typography",
+      "high whitespace ratio"
+    ],
+    "north_star": "A mostly-white interface that feels editorial and focused, with subtle electric-blue ambience and restrained dark accents for primary actions."
+  },
+  "foundations": {
+    "color": {
+      "neutrals": {
+        "bg.app": "#EDEFF2",
+        "bg.surface": "#F5F6F8",
+        "bg.card": "#F8F8F9",
+        "text.primary": "#262A34",
+        "text.secondary": "#8D9098",
+        "text.tertiary": "#A9ACB3",
+        "border.subtle": "#DBDDE2",
+        "border.focus": "#7676DB",
+        "overlay.scrim": "rgba(0,0,0,0.16)"
+      },
+      "brand": {
+        "blue.glow.core": "#2F79F7",
+        "blue.glow.soft": "#AECBFA",
+        "violet.edge": "#5A2FD4",
+        "accent.link": "#7576CA"
+      },
+      "semantic": {
+        "success.text": "#53B678",
+        "success.bg": "#E9F8EE",
+        "error.text": "#CC6667",
+        "error.bg": "#FCEEEE",
+        "warning.text": "#A06A2A",
+        "warning.bg": "#FFF5E8"
+      },
+      "button": {
+        "primary.bg": "#040404",
+        "primary.text": "#E8E8E8",
+        "primary.hover": "#0F172A",
+        "primary.active": "#000000",
+        "secondary.bg": "#F7F7F8",
+        "secondary.border": "#DADCE1",
+        "secondary.text": "#5A5F68"
+      }
+    },
+    "typography": {
+      "font_family": {
+        "primary": "\"Inter\", \"SF Pro Text\", \"Segoe UI\", sans-serif"
+      },
+      "scale": {
+        "display": {
+          "size": 40,
+          "line_height": 1.1,
+          "weight": 700
+        },
+        "h1": {
+          "size": 42,
+          "line_height": 1.12,
+          "weight": 700
+        },
+        "h2": {
+          "size": 23,
+          "line_height": 1.22,
+          "weight": 700
+        },
+        "h3": {
+          "size": 18,
+          "line_height": 1.28,
+          "weight": 600
+        },
+        "body-md": {
+          "size": 14,
+          "line_height": 1.45,
+          "weight": 400
+        },
+        "body-sm": {
+          "size": 12,
+          "line_height": 1.4,
+          "weight": 500
+        },
+        "label-sm": {
+          "size": 11,
+          "line_height": 1.25,
+          "weight": 700,
+          "tracking": 0.04,
+          "transform": "uppercase"
+        },
+        "button-md": {
+          "size": 14,
+          "line_height": 1,
+          "weight": 600
+        },
+        "caption": {
+          "size": 11,
+          "line_height": 1.3,
+          "weight": 500
+        }
+      }
+    },
+    "spacing": {
+      "base_unit": 4,
+      "scale": {
+        "1": 4,
+        "2": 8,
+        "3": 12,
+        "4": 16,
+        "5": 20,
+        "6": 24,
+        "8": 32,
+        "10": 40,
+        "12": 48,
+        "14": 56,
+        "16": 64
+      },
+      "patterns": {
+        "form_stack_gap": 10,
+        "label_to_field_gap": 6,
+        "section_to_section_gap": 16,
+        "card_internal_horizontal": 20,
+        "card_internal_vertical": 24
+      }
+    },
+    "radius": {
+      "xs": 6,
+      "sm": 8,
+      "md": 10,
+      "lg": 14,
+      "xl": 22,
+      "pill": 999
+    },
+    "elevation": {
+      "none": "none",
+      "card": "0 1px 2px rgba(16,24,40,0.04), 0 12px 30px rgba(50,80,130,0.06)",
+      "floating-toast": "0 8px 22px rgba(0,0,0,0.08)"
+    },
+    "stroke_weights": {
+      "hairline": 1,
+      "focus": 2
+    }
+  },
+  "layout_system": {
+    "scene_frame": {
+      "description": "Large rounded-corner viewport centered in a dark-violet ambient outer field.",
+      "width_behavior": "max-width around 92vw, fixed visual frame on desktop",
+      "height_behavior": "occupies most viewport height, ~85vh",
+      "corner_radius": 22,
+      "inner_background": "#EDEFF2",
+      "outer_background": "deep black-violet with soft luminous streaks",
+      "frame_border": "subtle dark edge, low contrast"
+    },
+    "content_alignment": {
+      "primary_axis": "center-center",
+      "secondary_bias": "slight upward optical centering for toasts",
+      "max_content_width": 440
+    },
+    "white_space_strategy": {
+      "rule": "Keep high negative space ratio (roughly 70-80% empty area) so the auth card feels isolated and premium.",
+      "card_to_edge_min": 48
+    }
+  },
+  "background_art_direction": {
+    "base": {
+      "fill": "#EDEFF2"
+    },
+    "ambient_blob": {
+      "shape": "organic fluid gradient blob",
+      "position": "behind card, usually centered-right",
+      "colors": [
+        "#D7E8FF",
+        "#9CC3FF",
+        "#2F79F7"
+      ],
+      "blur": "high (45-80px equivalent)",
+      "opacity": "0.55-0.9 depending on overlap",
+      "blend_mode": "normal with soft alpha falloff",
+      "motion": {
+        "type": "slow morph and drift",
+        "duration_ms": "9000-16000 loop",
+        "easing": "ease-in-out",
+        "amplitude": "small; never distracting from form"
+      }
+    },
+    "grain": {
+      "enabled": false,
+      "note": "Keep finish clean and smooth, no visible noise texture."
+    }
+  },
+  "component_guidelines": {
+    "auth_card": {
+      "purpose": "Primary container for login/reset/verification flows",
+      "anatomy": [
+        "top icon mark",
+        "headline",
+        "supporting copy",
+        "input stack",
+        "primary CTA",
+        "secondary options"
+      ],
+      "style": {
+        "width": "360-400px desktop",
+        "padding": "24px 20px",
+        "background": "#F8F8F9",
+        "border": "1px solid #ECEDEF",
+        "radius": 10,
+        "shadow": "very subtle, almost flat"
+      },
+      "rules": [
+        "Keep content tightly grouped; never exceed comfortable scan length.",
+        "Use consistent vertical rhythm based on 8/10/16 spacing steps.",
+        "Do not add heavy card shadows or tinted cards."
+      ]
+    },
+    "logo_mark": {
+      "description": "Small rounded-square black icon with white lightning glyph.",
+      "size": 28,
+      "radius": 6,
+      "placement": "centered above heading",
+      "clear_space": 12
+    },
+    "heading_block": {
+      "title_style": "h2",
+      "subtitle_style": "body-sm",
+      "alignment": "center",
+      "max_width": 270,
+      "spacing": {
+        "title_to_subtitle": 8,
+        "subtitle_to_form": 16
+      }
+    },
+    "text_field": {
+      "sizes": {
+        "height": 33,
+        "horizontal_padding": 10
+      },
+      "label": {
+        "style": "label-sm",
+        "color": "#8D9098",
+        "gap_to_field": 6
+      },
+      "container": {
+        "background": "#F8F8F9",
+        "border": "1px solid #DADCE1",
+        "radius": 6
+      },
+      "text": {
+        "font": "body-sm",
+        "color": "#444A55",
+        "placeholder": "#A4A8AF"
+      },
+      "states": {
+        "default": {
+          "border": "#DADCE1"
+        },
+        "focus": {
+          "border": "#7676DB",
+          "ring": "0 0 0 1px rgba(118,118,219,0.25)"
+        },
+        "error": {
+          "border": "#CC6667",
+          "ring": "0 0 0 1px rgba(204,102,103,0.22)"
+        },
+        "disabled": {
+          "opacity": 0.55
+        }
+      }
+    },
+    "otp_input": {
+      "container": {
+        "height": 40,
+        "border": "1px solid #DADCE1",
+        "radius": 6
+      },
+      "digit_style": {
+        "font_size": 34,
+        "weight": 500,
+        "tracking": 0.22,
+        "color": "#2E3340"
+      },
+      "cursor": {
+        "color": "#7676DB"
+      },
+      "layout": "single field visualized as evenly spaced 4-digit slots"
+    },
+    "button_primary": {
+      "dimensions": {
+        "height": 34,
+        "radius": 6
+      },
+      "style": {
+        "background": "#040404",
+        "text_color": "#ECECEC",
+        "font": "button-md",
+        "border": "1px solid rgba(255,255,255,0.14)"
+      },
+      "states": {
+        "default": "solid dark",
+        "hover": "slightly cooler dark blue-black",
+        "active": "pure black",
+        "loading": {
+          "behavior": "button mutes and may show thin progress sheen",
+          "opacity": 0.72
+        },
+        "disabled": {
+          "opacity": 0.5
+        }
+      }
+    },
+    "button_social": {
+      "purpose": "Google sign-in button",
+      "dimensions": {
+        "height": 33,
+        "radius": 6
+      },
+      "style": {
+        "background": "#F8F8F9",
+        "border": "1px solid #DADCE1",
+        "text_color": "#5A5F68",
+        "icon_left": "Google multicolor mark"
+      },
+      "interaction": "gentle border darken on hover, no heavy fill"
+    },
+    "inline_link": {
+      "style": {
+        "font": "body-sm",
+        "weight": 600,
+        "color": "#7576CA"
+      },
+      "usage": [
+        "forgot password",
+        "sign up",
+        "back to login",
+        "resend code"
+      ],
+      "hover": {
+        "color": "#6465B6",
+        "decoration": "underline optional"
+      }
+    },
+    "divider_with_text": {
+      "label": "Or continue with",
+      "line_color": "#E1E3E7",
+      "text_style": "caption",
+      "text_color": "#A2A6AE",
+      "spacing": {
+        "top": 14,
+        "bottom": 14
+      }
+    },
+    "toast_banner": {
+      "placement": "top-center of scene, above card",
+      "shape": {
+        "height": 30,
+        "horizontal_padding": 12,
+        "radius": 6
+      },
+      "typography": "caption medium",
+      "variants": {
+        "success": {
+          "bg": "#E9F8EE",
+          "text": "#53B678",
+          "icon": "check"
+        },
+        "error": {
+          "bg": "#FCEEEE",
+          "text": "#CC6667",
+          "icon": "alert-circle"
+        }
+      },
+      "shadow": "floating-toast"
+    },
+    "micro_feedback": {
+      "password_mismatch": "Show compact error toast at top while preserving form context.",
+      "redirect_notice": "Show success toast with short progress phrasing before route change.",
+      "field_validation": "Prefer border/focus cues over loud inline error text for this style."
+    }
+  },
+  "interaction_principles": {
+    "motion_language": [
+      "soft and slow for ambient elements",
+      "snappy and subtle for control interactions",
+      "avoid bouncy or playful easing"
+    ],
+    "timings_ms": {
+      "hover": 120,
+      "focus_transition": 120,
+      "button_press": 90,
+      "card_state_transition": 180,
+      "toast_enter": 220,
+      "toast_exit": 180
+    },
+    "easing": {
+      "default": "cubic-bezier(0.22, 1, 0.36, 1)",
+      "quick": "ease-out"
+    },
+    "page_transitions": {
+      "between_auth_steps": "cross-fade and slight scale (0.985 -> 1) on card content only",
+      "avoid": [
+        "full-page wipes",
+        "aggressive slide-ins"
+      ]
+    }
+  },
+  "composition_rules": {
+    "hierarchy": [
+      "One dominant CTA per card.",
+      "Secondary actions should be links or outline style.",
+      "Keep labels tiny and uppercase for functional clarity."
+    ],
+    "density": "low-to-medium",
+    "alignment": "strict vertical alignment; centered in card context",
+    "contrast_strategy": "Primary contrast comes from dark CTA against pale surfaces; body copy stays low-contrast but legible."
+  },
+  "accessibility_guidance": {
+    "minimums": {
+      "text_contrast_body": "4.5:1",
+      "text_contrast_large": "3:1",
+      "focus_indicator": "visible 2px equivalent on all inputs/buttons",
+      "touch_target_min": 32
+    },
+    "notes": [
+      "Keep subtitles and helper text from dropping below accessible contrast thresholds.",
+      "Ensure toast messages are announced via ARIA live regions.",
+      "Do not rely on color alone for success/error; include iconography or semantic text."
+    ]
+  },
+  "implementation_prompts_for_ai": {
+    "do": [
+      "Use a light neutral app background with one soft electric-blue blob behind the auth card.",
+      "Center a compact auth card with subtle border, minimal shadow, and rounded corners around 10px.",
+      "Use dark primary buttons, tiny uppercase labels, and cool-purple focus borders.",
+      "Keep typography restrained: bold heading, muted subtitle, compact form text.",
+      "Show small top-center toasts for success/error states."
+    ],
+    "dont": [
+      "Do not use glassmorphism blur on the card itself.",
+      "Do not introduce bright saturated multi-color palettes.",
+      "Do not make corners too round (>14px) for form controls.",
+      "Do not add strong drop shadows, gradients on buttons, or oversized icons.",
+      "Do not crowd the card with extra explanatory text."
+    ],
+    "starter_css_tokens": {
+      "--bg-app": "#EDEFF2",
+      "--bg-card": "#F8F8F9",
+      "--text-primary": "#262A34",
+      "--text-secondary": "#8D9098",
+      "--border-subtle": "#DADCE1",
+      "--focus": "#7676DB",
+      "--accent-link": "#7576CA",
+      "--btn-primary": "#040404",
+      "--btn-primary-text": "#ECECEC",
+      "--blob-blue": "#2F79F7"
+    }
+  }
+}
