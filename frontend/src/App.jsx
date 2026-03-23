@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Sidebar from "./components/Sidebar";
 
 const API = "http://localhost:8000";
@@ -109,6 +109,31 @@ export default function App() {
   const [posting, setPosting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const tabContainerRef = useRef(null);
+  const tabRefs = useRef({});
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 });
+
+  const tabs = [
+    { key: "new", label: "Unread" },
+    { key: "trending", label: "Trending" },
+  ];
+
+  const updateIndicator = () => {
+    const btn = tabRefs.current[tab];
+    const container = tabContainerRef.current;
+    if (btn && container) {
+      const cRect = container.getBoundingClientRect();
+      const bRect = btn.getBoundingClientRect();
+      setIndicator({
+        left: bRect.left - cRect.left,
+        width: bRect.width,
+      });
+    }
+  };
+
+  useLayoutEffect(updateIndicator, [tab]);
+  useEffect(() => { window.addEventListener("resize", updateIndicator); return () => window.removeEventListener("resize", updateIndicator); }, [tab]);
+
   useEffect(() => {
     fetch(`${API}/yaks`)
       .then(r => r.json())
@@ -184,18 +209,25 @@ export default function App() {
             </div>
 
             {/* Right: tab pills */}
-            <div className="flex items-center liquid-glass p-[3px] gap-[2px]">
-              {[
-                { key: "new", label: "Unread" },
-                { key: "trending", label: "Trending" },
-              ].map(t => (
+            <div ref={tabContainerRef} className="relative flex items-center liquid-glass p-[3px]">
+              {/* Sliding glass indicator */}
+              <div
+                className="absolute top-[3px] h-[calc(100%-6px)] liquid-glass-pill pointer-events-none"
+                style={{
+                  left: indicator.left,
+                  width: indicator.width,
+                  transition: "left 280ms cubic-bezier(0.4, 0, 0.2, 1), width 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
+              />
+              {tabs.map(t => (
                 <button
                   key={t.key}
+                  ref={el => { tabRefs.current[t.key] = el; }}
                   onClick={() => setTab(t.key)}
-                  className={`px-4 py-[6px] text-body-sm transition-all duration-[140ms] ease-design ${
+                  className={`relative z-10 px-4 py-[6px] text-body-sm rounded-full transition-colors duration-200 ${
                     tab === t.key
-                      ? "liquid-glass-pill text-txt-primary font-semibold"
-                      : "text-txt-secondary hover:text-txt-primary rounded-full"
+                      ? "text-txt-primary font-semibold"
+                      : "text-txt-secondary hover:text-txt-primary"
                   }`}
                 >
                   {t.label}
