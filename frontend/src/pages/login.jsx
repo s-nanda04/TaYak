@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { API_BASE } from "../apiBase";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -45,15 +46,26 @@ export default function Login() {
       : { username: email, password };
 
     try {
-      const res = await fetch(`http://localhost:8000/${endpoint}`, {
+      const res = await fetch(`${API_BASE}/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = data.detail || "Something went wrong";
+        if (res.status === 404) {
+          setError(
+            "API not found (404). Start the backend: cd backend && uvicorn main:app --reload --port 8000"
+          );
+          return;
+        }
+        const msg =
+          typeof data.detail === "string"
+            ? data.detail
+            : Array.isArray(data.detail)
+              ? data.detail.map((d) => d.msg).join(", ")
+              : "Something went wrong";
         if (res.status === 403 && !isSignup) {
           setMode("confirm");
           setError(msg);
@@ -68,7 +80,7 @@ export default function Login() {
           setMode("confirm");
           setSuccess("Check your inbox to confirm your account");
         } else if (isSignup) {
-          localStorage.setItem("token", data.token);
+          if (data.token) localStorage.setItem("token", data.token);
           setSuccess("Account created! Redirecting...");
           setTimeout(() => navigate("/feed"), 1200);
         } else {
@@ -159,7 +171,7 @@ export default function Login() {
                   onClick={async () => {
                     clearToasts();
                     try {
-                      const res = await fetch("http://localhost:8000/resend-confirmation", {
+                      const res = await fetch(`${API_BASE}/resend-confirmation`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ email }),
