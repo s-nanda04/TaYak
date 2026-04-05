@@ -1,110 +1,100 @@
-import { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
-
-const API = "http://localhost:8000";
+import React, { useEffect, useState } from 'react'
+import supabase from '../supabaseClient'
 
 export default function Leaderboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [leaders, setLeaders] = useState([])
 
   useEffect(() => {
-    fetch(`${API}/leaderboard`)
-      .then(r => {
-        if (!r.ok) throw new Error("Failed to load leaderboard");
-        return r.json();
+    let mounted = true
+
+    async function loadLeaderboard() {
+      setLoading(true)
+      // Fetch all profiles
+      const { data: profiles, error: pErr } = await supabase
+        .from('profiles')       // adjust if your user table is named differently
+        .select('id, username, avatar_url')
+
+      if (pErr) {
+        console.error('profiles error', pErr)
+        setLoading(false)
+        return
+      }
+
+      // Fetch all posts (only need author/user id)
+      const { data: posts, error: postsErr } = await supabase
+        .from('posts')          // adjust if your posts table has another name
+        .select('id, author')   // adjust 'author' to the FK column that references profiles.id
+
+      if (postsErr) {
+        console.error('posts error', postsErr)
+        setLoading(false)
+        return
+      }
+
+      // Count posts per author id
+      const counts = {}
+      (posts || []).forEach(p => {
+        const author = p.author || p.user_id || p.owner
+        if (!author) return
+        counts[author] = (counts[author] || 0) + 1
       })
-      .then(json => { setData(json); setLoading(false); })
-      .catch(e => { console.error(e); setError(e.message); setLoading(false); });
-  }, []);
 
-  const medals = ["🥇", "🥈", "🥉", "4.", "5.", "6.", "7.", "8.", "9.", "10."];
+      // Merge profiles with counts (ensure every profile appears)
+      const merged = (profiles || []).map(profile => ({
+        id: profile.id,
+        username: profile.username || profile.name || 'Unknown',
+        avatar_url: profile.avatar_url || null,
+        postCount: counts[profile.id] || 0,
+      }))
 
-  const Section = ({ title, children }) => (
-    <>
-      <h2 className="text-body-sm font-semibold text-txt-secondary uppercase tracking-wider mb-3 px-1">
-        {title}
-      </h2>
-      <div className="bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden mb-6">
-        {children}
-      </div>
-    </>
-  );
+      // Optionally include contributors who posted but have no profile record:
+      Object.keys(counts).forEach(authorId => {
+        if (!merged.find(m => m.id === authorId)) {
+          merged.push({
+            id: authorId,
+            username: 'Unknown',
+            avatar_url: null,
+            postCount: counts[authorId],
+          })
+        }
+      })
 
-  const Row = ({ left, right, index, total }) => (
-    <div className={`flex items-center gap-3 px-4 py-3 ${index < total - 1 ? "border-b border-subtle" : ""}`}>
-      <span className="text-[20px] w-8 text-center shrink-0">{medals[index]}</span>
-      <span className="flex-1 text-body-md text-txt-primary font-medium">{left}</span>
-      <span className="text-caption text-txt-tertiary">{right}</span>
-    </div>
-  );
+      // Sort by postCount desc
+      merged.sort((a, b) => b.postCount - a.postCount)
+
+      if (mounted) {
+        setLeaders(merged)
+        setLoading(false)
+      }
+    }
+
+    loadLeaderboard()
+    return () => { mounted = false }
+  }, [])
+
+  if (loading) return <div>Loading leaderboard…</div>
 
   return (
-    <div className="min-h-screen bg-app font-sans relative">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
-        <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
-      </div>
-
-      <div className="sticky top-0 z-50 bg-app/80 backdrop-blur-xl border-b border-subtle">
-        <div className="max-w-[600px] mx-auto px-5">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-3.5">
-              <button onClick={() => setSidebarOpen(true)} className="flex flex-col gap-1 p-1 group">
-                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
-                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
-                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
-              </button>
-              <div className="flex items-center gap-2">
-                <img src="/tamid-logo.png" alt="TaYak" className="w-7 h-7 rounded-xs object-cover" />
-                <span className="font-extrabold text-[18px] text-txt-primary tracking-tight">TaYak</span>
+    <div className="p-4">
+      <h2 className="text-xl font-semibold mb-4">Top Contributors</h2>
+      <div className="space-y-2">
+        {leaders.map((u, idx) => (
+          <div key={u.id || idx} className="flex items-center justify-between p-3 bg-white rounded shadow-sm">
+            <div className="flex items-center space-x-3">
+              {u.avatar_url
+                ? <img src={u.avatar_url} alt={u.username} className="w-10 h-10 rounded-full" />
+                : <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">{(u.username||'U')[0]}</div>
+              }
+              <div>
+                <div className="font-medium">{u.username}</div>
+                <div className="text-sm text-gray-500">ID: {u.id}</div>
               </div>
             </div>
-            <span className="text-body-sm text-txt-secondary font-semibold">Leaderboard</span>
+            <div className="text-sm text-blue-600 font-semibold">{u.postCount} post{u.postCount !== 1 ? 's' : ''}</div>
           </div>
-        </div>
-      </div>
-
-      <div className="relative z-10 max-w-[600px] mx-auto px-3 md:px-0 pt-4 pb-10">
-        {loading && (
-          <p className="text-center text-txt-secondary py-16 text-body-md">Loading leaderboard…</p>
-        )}
-        {error && (
-          <p className="text-center text-error-text py-16 text-body-md">{error}</p>
-        )}
-        {data && (
-          <>
-            <Section title="Top Contributors">
-              {data.top_contributors.map((p, i) => (
-                <Row key={p.name} left={p.name} right={`${p.posts} posts`} index={i} total={data.top_contributors.length} />
-              ))}
-            </Section>
-
-            <Section title="Top Topics">
-              {data.top_topics.map((t, i) => (
-                <Row key={t.topic} left={t.topic} right={`${t.posts} posts`} index={i} total={data.top_topics.length} />
-              ))}
-            </Section>
-
-            <h2 className="text-body-sm font-semibold text-txt-secondary uppercase tracking-wider mb-3 px-1">
-              Most Upvoted Posts
-            </h2>
-            <div className="bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
-              {data.top_posts.map((post, i) => (
-                <div key={post.id} className={`px-4 py-3 ${i < data.top_posts.length - 1 ? "border-b border-subtle" : ""}`}>
-                  <p className="text-body-md text-txt-primary leading-relaxed">{post.text}</p>
-                  <span className="text-caption text-blob-blue font-bold mt-1.5 inline-block">
-                    ▲ {post.votes} upvotes
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        ))}
       </div>
     </div>
-  );
+  )
 }
