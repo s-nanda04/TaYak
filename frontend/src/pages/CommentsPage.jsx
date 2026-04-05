@@ -37,6 +37,7 @@ export default function CommentsPage() {
   const [composing, setComposing] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [posting, setPosting] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -82,6 +83,7 @@ export default function CommentsPage() {
     const trimmed = commentText.trim();
     if (!trimmed || trimmed.length > MAX_CHARS) return;
     setPosting(true);
+    setError("");
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API}/yaks/${id}/comments`, {
@@ -92,7 +94,15 @@ export default function CommentsPage() {
         },
         body: JSON.stringify({ text: trimmed }),
       });
-      if (!res.ok) throw new Error("Comment failed");
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          setError("Your session expired. Please sign in again.");
+          return;
+        }
+        setError("Failed to post comment. Please try again.");
+        return;
+      }
       const newComment = await res.json();
       setComments(prev => [newComment, ...prev]);
       setYak(prev => prev ? { ...prev, comments: (prev.comments || 0) + 1 } : prev);
@@ -100,6 +110,7 @@ export default function CommentsPage() {
       setComposing(false);
     } catch (e) {
       console.error("Failed to create comment", e);
+      setError("Something went wrong. Check your connection and try again.");
     } finally {
       setPosting(false);
     }
@@ -189,7 +200,7 @@ export default function CommentsPage() {
       </div>
 
       <button
-        onClick={() => setComposing(true)}
+        onClick={() => { setError(""); setComposing(true); }}
         className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -226,7 +237,10 @@ export default function CommentsPage() {
                 autoFocus
                 value={commentText}
                 onChange={e => {
-                  if (e.target.value.length <= MAX_CHARS) setCommentText(e.target.value);
+                  if (e.target.value.length <= MAX_CHARS) {
+                    setCommentText(e.target.value);
+                    if (error) setError("");
+                  }
                 }}
                 placeholder="Write a comment..."
                 maxLength={MAX_CHARS}
@@ -235,7 +249,10 @@ export default function CommentsPage() {
               />
             </div>
 
-            <div className="flex items-center justify-end px-5 pb-4">
+            <div className="flex items-center justify-between px-5 pb-4">
+              {error ? (
+                <p className="text-caption text-error-text leading-tight max-w-[70%]">{error}</p>
+              ) : <span />}
               <span className={`text-caption font-mono ${
                 commentText.length > MAX_CHARS * 0.9
                   ? commentText.length >= MAX_CHARS ? "text-error-text" : "text-[#A06A2A]"
