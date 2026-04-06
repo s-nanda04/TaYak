@@ -56,7 +56,12 @@ export const YakCard = ({ yak, onVote, isLast, hideCommentNav }) => {
         </div>
 
         <div className="flex-1 min-w-0">
-          <span className="text-caption text-txt-tertiary">{yak.time} ago</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-caption text-txt-tertiary">{yak.time} ago</span>
+            <span className="text-caption px-2 py-[2px] rounded-full border border-subtle bg-surface/60 text-txt-secondary font-semibold">
+              {(yak.topic || "").trim() || "General"}
+            </span>
+          </div>
           <p className="text-body-md text-txt-primary mt-1 break-words whitespace-pre-wrap leading-relaxed">
             {yak.text}
           </p>

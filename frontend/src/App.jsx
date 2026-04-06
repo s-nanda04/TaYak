@@ -4,6 +4,8 @@ import { YakCard, getRelativeTime, getAvatarForId, getColorForId } from "./compo
 
 const API = "http://localhost:8000";
 const MAX_CHARS = 255;
+const MAX_TOPIC_CHARS = 32;
+const CUSTOM_TOPIC_VALUE = "__custom__";
 
 export default function App() {
   const [tab, setTab] = useState("new");
@@ -11,6 +13,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [postText, setPostText] = useState("");
+  const [selectedTopic, setSelectedTopic] = useState("General");
+  const [customTopic, setCustomTopic] = useState("");
   const [posting, setPosting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -48,6 +52,30 @@ export default function App() {
       .catch(e => { console.error("Failed to load yaks", e); setLoading(false); });
   }, []);
 
+  const existingTopics = (() => {
+    const set = new Set();
+    for (const y of yaks) {
+      const t = (y?.topic || "").trim();
+      if (t) set.add(t);
+    }
+    const rest = [...set].filter(t => t.toLowerCase() !== "general").sort((a, b) => a.localeCompare(b));
+    return ["General", ...rest];
+  })();
+
+  const effectiveTopic = (() => {
+    if (selectedTopic === CUSTOM_TOPIC_VALUE) {
+      return customTopic.trim() || "General";
+    }
+    return (selectedTopic || "").trim() || "General";
+  })();
+
+  const resetComposer = () => {
+    setComposing(false);
+    setPostText("");
+    setSelectedTopic("General");
+    setCustomTopic("");
+  };
+
   const handlePost = async () => {
     const trimmed = postText.trim();
     if (!trimmed || trimmed.length > MAX_CHARS) return;
@@ -56,13 +84,12 @@ export default function App() {
       const res = await fetch(`${API}/yaks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: trimmed }),
+        body: JSON.stringify({ text: trimmed, topic: effectiveTopic }),
       });
       if (!res.ok) throw new Error("Post failed");
       const newYak = await res.json();
       setYaks(prev => [newYak, ...prev]);
-      setPostText("");
-      setComposing(false);
+      resetComposer();
     } catch (e) {
       console.error("Failed to create yak", e);
     } finally {
@@ -202,13 +229,13 @@ export default function App() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/16"
-            onClick={() => { if (!posting) { setComposing(false); setPostText(""); } }}
+            onClick={() => { if (!posting) resetComposer(); }}
           />
           <div className="relative w-full sm:max-w-[480px] bg-card border border-[#ECEDEF] sm:rounded-md rounded-t-md shadow-card mx-0 sm:mx-4 animate-toast-in">
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
               <button
-                onClick={() => { if (!posting) { setComposing(false); setPostText(""); } }}
+                onClick={() => { if (!posting) resetComposer(); }}
                 className="text-body-sm text-txt-secondary hover:text-txt-primary transition-colors duration-[120ms]"
               >
                 Cancel
@@ -221,6 +248,45 @@ export default function App() {
               >
                 {posting ? "Posting…" : "Post"}
               </button>
+            </div>
+
+            {/* Topic */}
+            <div className="px-5 pb-3">
+              <div className="flex items-center gap-3">
+                <span className="text-caption text-txt-tertiary font-semibold uppercase tracking-wider shrink-0">
+                  Topic
+                </span>
+                <select
+                  value={selectedTopic}
+                  onChange={(e) => {
+                    setSelectedTopic(e.target.value);
+                    if (e.target.value !== CUSTOM_TOPIC_VALUE) setCustomTopic("");
+                  }}
+                  className="flex-1 min-w-0 bg-transparent text-body-sm text-txt-primary outline-none border border-subtle rounded-xs px-3 py-2"
+                  disabled={posting}
+                >
+                  {existingTopics.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                  <option value={CUSTOM_TOPIC_VALUE}>Custom…</option>
+                </select>
+              </div>
+              {selectedTopic === CUSTOM_TOPIC_VALUE && (
+                <input
+                  value={customTopic}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (next.length <= MAX_TOPIC_CHARS) setCustomTopic(next);
+                  }}
+                  placeholder="Enter a topic"
+                  maxLength={MAX_TOPIC_CHARS}
+                  className="mt-2 w-full bg-transparent text-body-sm text-txt-primary placeholder:text-placeholder outline-none border border-subtle rounded-xs px-3 py-2"
+                  disabled={posting}
+                />
+              )}
+              <div className="mt-1 text-caption text-txt-tertiary">
+                Posting as <span className="font-semibold text-txt-secondary">{effectiveTopic}</span>
+              </div>
             </div>
 
             {/* Textarea */}
