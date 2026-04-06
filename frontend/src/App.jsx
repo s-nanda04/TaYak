@@ -517,7 +517,7 @@ export default function App() {
       {composing && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div
-            className="absolute inset-0 bg-black/16"
+            className="absolute inset-0 bg-black/20 backdrop-blur-md"
             onClick={() => { if (!posting) resetCompose(); }}
           />
           <div
