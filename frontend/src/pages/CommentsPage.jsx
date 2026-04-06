@@ -143,15 +143,14 @@ export default function CommentsPage() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
+        const row = await res.json().catch(() => ({}));
+        const detail = typeof row.detail === "string" ? row.detail : "";
         if (res.status === 401) {
-          localStorage.removeItem("token");
-          setError("Your session expired. Please sign in again.");
+          if (token) localStorage.removeItem("token");
+          setError(detail || "Please sign in to post comments.");
           return;
         }
-        const row = await res.json().catch(() => ({}));
-        setError(
-          typeof row.detail === "string" ? row.detail : "Failed to post comment. Please try again."
-        );
+        setError(detail || "Failed to post comment. Please try again.");
         return;
       }
       const newComment = await res.json();
