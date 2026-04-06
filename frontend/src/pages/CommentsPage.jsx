@@ -119,7 +119,11 @@ export default function CommentsPage() {
   return (
     <div className="min-h-screen bg-app font-sans relative">
       {/* Everything behind the composer */}
-      <div className={`transition-[filter,transform] duration-200 ${composing ? "compose-blur" : ""}`}>
+      <div
+        className={`transition-[filter,transform] duration-200 ${
+          composing ? "compose-blur pointer-events-none" : ""
+        }`}
+      >
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
           <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
@@ -201,14 +205,16 @@ export default function CommentsPage() {
           <div className="h-24" />
         </div>
 
-        <button
-          onClick={() => { setError(""); setComposing(true); }}
-          className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-          </svg>
-        </button>
+        {!composing && (
+          <button
+            onClick={() => { setError(""); setComposing(true); }}
+            className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+          </button>
+        )}
       </div>
 
       {composing && (
