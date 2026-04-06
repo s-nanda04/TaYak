@@ -1,3 +1,4 @@
+import hashlib
 import html
 import json
 import os
@@ -101,6 +102,7 @@ class VoteRequest(BaseModel):
 
 class CommentCreate(BaseModel):
     text: str
+    parent_id: Optional[str] = None
 
 
 class YakCreate(BaseModel):
@@ -109,10 +111,19 @@ class YakCreate(BaseModel):
     author_name: Optional[str] = None
 
 
+class TopPostOut(BaseModel):
+    """Serialized on /leaderboard — explicit fields so `topic` is never dropped."""
+
+    id: Optional[str] = None
+    text: Optional[str] = None
+    votes: int = 0
+    topic: str = "General"
+
+
 class LeaderboardResponse(BaseModel):
     top_contributors: List[dict]
     top_topics: List[dict]
-    top_posts: List[dict]
+    top_posts: List[TopPostOut]
 
 
 # Shown in GET /topics even before anyone posts; merged with topics from the DB.
@@ -297,6 +308,35 @@ def get_user_id_from_token(authorization: Optional[str]) -> Optional[str]:
     return None
 
 
+def _leaderboard_topic_label(yak: dict) -> str:
+    """Match feed normalization: empty or missing topic counts as General."""
+    raw = yak.get("topic")
+    if raw is None:
+        raw = yak.get("Topic")
+    if raw is not None:
+        s = str(raw).strip()
+        return s if s else "General"
+    return "General"
+
+
+def _anon_display_name(key: str) -> str:
+    """Stable pseudonym from user id (or any key). Never exposes email."""
+    h = hashlib.sha256(f"tayak:{key}".encode()).hexdigest()[:8]
+    return f"Yak-{h.upper()}"
+
+
+def _leaderboard_author_label(raw: Optional[str]) -> str:
+    """Leaderboard display: never show raw email; legacy emails become Yak-XXXXXXXX."""
+    if raw is None:
+        return "Anonymous"
+    s = str(raw).strip()
+    if not s or s.lower() == "unknown":
+        return "Anonymous"
+    if "@" in s:
+        return _anon_display_name(s.lower())
+    return s
+
+
 def get_user_email_from_token(authorization: Optional[str]) -> Optional[str]:
     if not authorization or not authorization.startswith("Bearer "):
         return None
@@ -335,6 +375,8 @@ def get_yaks(authorization: Optional[str] = Header(None)):
 
         for yak in yaks:
             yak["user_vote"] = user_votes.get(yak["id"], 0) if user_id else 0
+            # Always a string so the feed matches the leaderboard and the UI never gets null topic.
+            yak["topic"] = _leaderboard_topic_label(yak)
 
         return yaks
     except Exception as e:
@@ -395,8 +437,8 @@ def create_yak(body: YakCreate, authorization: Optional[str] = Header(None)):
     """
     Create a new yak (post).
 
-    Leaderboard counts posts per `author_name`. If the client omits it, we set
-    `author_name` from the JWT (user email) so contributors show up correctly.
+    `author_name` is optional (non-email display only). If omitted, we store a
+    stable anonymous handle derived from the user id — never the email.
 
     Expected Supabase `yaks` table columns:
     - id (uuid, default)
@@ -409,8 +451,13 @@ def create_yak(body: YakCreate, authorization: Optional[str] = Header(None)):
     """
     try:
         author_name = body.author_name
+        if author_name is not None:
+            author_name = (author_name or "").strip()
+            if not author_name or "@" in author_name:
+                author_name = None
         if author_name is None:
-            author_name = get_user_email_from_token(authorization)
+            uid = get_user_id_from_token(authorization)
+            author_name = _anon_display_name(uid) if uid else "Anonymous"
 
         topic_val = (body.topic or "").strip()
         if len(topic_val) > 80:
@@ -426,7 +473,9 @@ def create_yak(body: YakCreate, authorization: Optional[str] = Header(None)):
         response = supabase.table("yaks").insert(payload).execute()
         if not response.data:
             raise HTTPException(status_code=500, detail="Failed to create yak")
-        return response.data[0]
+        row = response.data[0]
+        row["topic"] = _leaderboard_topic_label(row)
+        return row
     except Exception as e:
         print(f"Error creating yak: {e}")
         raise HTTPException(status_code=500, detail="Failed to create yak") from e
@@ -471,25 +520,123 @@ def vote_yak(yak_id: str, body: VoteRequest, authorization: Optional[str] = Head
         raise HTTPException(status_code=500, detail="Failed to update vote") from e
 
 
+def _insert_yak_comment_row(payload: dict):
+    """Insert comment; retry without optional columns if the DB predates a migration."""
+    try:
+        return supabase.table("yak_comments").insert(payload).execute()
+    except Exception as e:
+        err = str(e).lower()
+        if "author_name" in err and ("does not exist" in err or "42703" in err):
+            payload = {k: v for k, v in payload.items() if k != "author_name"}
+            return supabase.table("yak_comments").insert(payload).execute()
+        if "parent_id" in err and ("does not exist" in err or "42703" in err):
+            payload = {k: v for k, v in payload.items() if k != "parent_id"}
+            return supabase.table("yak_comments").insert(payload).execute()
+        raise
+
+
+def _sync_comment_vote_total(comment_id: str) -> int:
+    votes_sum_resp = (
+        supabase.table("yak_comment_votes")
+        .select("vote_value")
+        .eq("comment_id", comment_id)
+        .execute()
+    )
+    new_votes = sum(v["vote_value"] for v in (votes_sum_resp.data or []))
+    supabase.table("yak_comments").update({"votes": new_votes}).eq("id", comment_id).execute()
+    return new_votes
+
+
 @app.get("/yaks/{yak_id}/comments")
-def get_yak_comments(yak_id: str):
+def get_yak_comments(yak_id: str, authorization: Optional[str] = Header(None)):
     try:
         chk = supabase.table("yaks").select("id").eq("id", yak_id).limit(1).execute()
         if not chk.data:
             raise HTTPException(status_code=404, detail="Yak not found")
         r = (
             supabase.table("yak_comments")
-            .select("id, yak_id, text, author_name, created_at")
+            .select("*")
             .eq("yak_id", yak_id)
             .order("created_at", desc=False)
             .execute()
         )
-        return r.data or []
+        rows = r.data or []
+        user_id = get_user_id_from_token(authorization)
+        user_votes: dict = {}
+        if user_id and rows:
+            ids = [row["id"] for row in rows]
+            try:
+                vr = (
+                    supabase.table("yak_comment_votes")
+                    .select("comment_id, vote_value")
+                    .eq("user_id", user_id)
+                    .in_("comment_id", ids)
+                    .execute()
+                )
+                user_votes = {
+                    v["comment_id"]: v["vote_value"] for v in (vr.data or [])
+                }
+            except Exception as ex:
+                print(f"yak_comment_votes lookup skipped: {ex}")
+        for row in rows:
+            row["user_vote"] = user_votes.get(row["id"], 0)
+        return rows
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error fetching comments: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch comments") from e
+
+
+@app.post("/yaks/{yak_id}/comments/{comment_id}/vote")
+def vote_yak_comment(
+    yak_id: str,
+    comment_id: str,
+    body: VoteRequest,
+    authorization: Optional[str] = Header(None),
+):
+    if body.vote_value not in (-1, 0, 1):
+        raise HTTPException(status_code=400, detail="vote_value must be -1, 0, or 1")
+
+    user_id = get_user_id_from_token(authorization)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required to vote")
+
+    try:
+        c = (
+            supabase.table("yak_comments")
+            .select("id, yak_id")
+            .eq("id", comment_id)
+            .single()
+            .execute()
+        )
+        if not c.data or c.data.get("yak_id") != yak_id:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        if body.vote_value == 0:
+            supabase.table("yak_comment_votes").delete().eq("user_id", user_id).eq(
+                "comment_id", comment_id
+            ).execute()
+        else:
+            supabase.table("yak_comment_votes").upsert(
+                {
+                    "user_id": user_id,
+                    "comment_id": comment_id,
+                    "vote_value": body.vote_value,
+                },
+                on_conflict="user_id,comment_id",
+            ).execute()
+
+        total = _sync_comment_vote_total(comment_id)
+        return {"success": True, "votes": total}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error voting on comment: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update comment vote. Run backend/supabase_yak_comments.sql in Supabase.",
+        ) from e
 
 
 @app.post("/yaks/{yak_id}/comments")
@@ -504,18 +651,33 @@ def post_yak_comment(
     if len(text) > 1000:
         raise HTTPException(status_code=400, detail="Comment too long")
 
-    author_name = get_user_email_from_token(authorization) or "Anonymous"
+    uid = get_user_id_from_token(authorization)
+    author_name = _anon_display_name(uid) if uid else "Anonymous"
 
     try:
         yak_check = supabase.table("yaks").select("id, comments").eq("id", yak_id).single().execute()
         if not yak_check.data:
             raise HTTPException(status_code=404, detail="Yak not found")
 
-        ins = (
-            supabase.table("yak_comments")
-            .insert({"yak_id": yak_id, "text": text, "author_name": author_name})
-            .execute()
-        )
+        parent_id = (body.parent_id or "").strip() or None
+        if parent_id:
+            parent = (
+                supabase.table("yak_comments")
+                .select("id, yak_id")
+                .eq("id", parent_id)
+                .single()
+                .execute()
+            )
+            if not parent.data or parent.data.get("yak_id") != yak_id:
+                raise HTTPException(status_code=400, detail="Invalid parent comment")
+
+        ins_payload: dict = {"yak_id": yak_id, "text": text}
+        if author_name:
+            ins_payload["author_name"] = author_name
+        if parent_id:
+            ins_payload["parent_id"] = parent_id
+
+        ins = _insert_yak_comment_row(ins_payload)
         if not ins.data:
             raise HTTPException(status_code=500, detail="Failed to post comment")
 
@@ -525,7 +687,9 @@ def post_yak_comment(
         except Exception as bump_err:
             print(f"Comment count bump skipped: {bump_err}")
 
-        return ins.data[0]
+        row = ins.data[0]
+        row["user_vote"] = 0
+        return row
     except HTTPException:
         raise
     except Exception as e:
@@ -552,9 +716,9 @@ def leaderboard():
     topic_counter: Counter[str] = Counter()
 
     for yak in yaks:
-        author_name = yak.get("author_name") or "Unknown"
-        topic = yak.get("topic") or "General"
-        contributor_counter[author_name] += 1
+        author_label = _leaderboard_author_label(yak.get("author_name"))
+        topic = _leaderboard_topic_label(yak)
+        contributor_counter[author_label] += 1
         topic_counter[topic] += 1
 
     top_contributors = [
@@ -566,18 +730,28 @@ def leaderboard():
         for topic, count in topic_counter.most_common(10)
     ]
 
-    top_posts = sorted(
+    top_posts_raw = sorted(
         [
             {
                 "id": yak.get("id"),
                 "text": yak.get("text"),
                 "votes": yak.get("votes", 0),
+                "topic": _leaderboard_topic_label(yak),
             }
             for yak in yaks
         ],
         key=lambda x: x["votes"],
         reverse=True,
     )[:10]
+    top_posts = [
+        TopPostOut(
+            id=str(x["id"]) if x.get("id") is not None else None,
+            text=x.get("text"),
+            votes=int(x.get("votes") or 0),
+            topic=x.get("topic") or "General",
+        )
+        for x in top_posts_raw
+    ]
 
     return LeaderboardResponse(
         top_contributors=top_contributors,

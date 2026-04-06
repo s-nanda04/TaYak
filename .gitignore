@@ -1,4 +1,6 @@
 .mypy_cache/
+node_modules/
+frontend/node_modules/
 backend/.env
 backend/venv/
 **/__pycache__/
