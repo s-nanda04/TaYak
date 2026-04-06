@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "/opt/homebrew/bin/node",
+      "runtimeArgs": ["/Users/shreyan/Desktop/Tamid/TaYak/TaYak/frontend/node_modules/.bin/vite", "--host"],
+      "cwd": "/Users/shreyan/Desktop/Tamid/TaYak/TaYak/frontend",
+      "port": 5173
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "/Users/shreyan/Desktop/Tamid/TaYak/TaYak/backend/run.sh",
+      "runtimeArgs": [],
+      "cwd": "/Users/shreyan/Desktop/Tamid/TaYak/TaYak/backend",
+      "port": 8000
+    }
+  ]
+}
