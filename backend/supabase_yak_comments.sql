@@ -1,6 +1,10 @@
 -- Run in Supabase → SQL Editor (after `yaks` exists)
 -- Replies / chat on each yak (roots + threaded replies), optional author_name, vote tallies.
+--
+-- IMPORTANT: If your `yak_comments.id` is already bigint (int8), do NOT add uuid `parent_id`.
+-- Use `backend/supabase_yak_comments_bigint.sql` instead (or only run the sections you need).
 
+-- Fresh install: uuid ids (recommended for new projects)
 create table if not exists public.yak_comments (
   id uuid primary key default gen_random_uuid(),
   yak_id uuid not null references public.yaks (id) on delete cascade,
@@ -11,10 +15,12 @@ create table if not exists public.yak_comments (
   created_at timestamptz not null default now()
 );
 
--- Existing projects: add columns created before this migration
+-- Existing uuid-id tables: add columns that might be missing (safe to re-run)
 alter table public.yak_comments add column if not exists author_name text;
-alter table public.yak_comments add column if not exists parent_id uuid references public.yak_comments (id) on delete cascade;
+alter table public.yak_comments add column if not exists user_id uuid;
 alter table public.yak_comments add column if not exists votes int not null default 0;
+-- parent_id for uuid ids only — if your `id` is bigint, use supabase_yak_comments_bigint.sql instead
+-- alter table public.yak_comments add column if not exists parent_id uuid references public.yak_comments (id) on delete cascade;
 
 create index if not exists yak_comments_yak_id_idx on public.yak_comments (yak_id);
 create index if not exists yak_comments_parent_id_idx on public.yak_comments (parent_id);

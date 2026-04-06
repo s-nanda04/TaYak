@@ -3,8 +3,9 @@ import html
 import json
 import os
 import socket
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
+from types import SimpleNamespace
 from typing import List, Optional
 from urllib.parse import urlparse
 
@@ -520,30 +521,83 @@ def vote_yak(yak_id: str, body: VoteRequest, authorization: Optional[str] = Head
         raise HTTPException(status_code=500, detail="Failed to update vote") from e
 
 
+def _yak_comment_insert(payload: dict):
+    """
+    Insert a yak_comment row. supabase-py cannot chain .select() after .insert()
+    (unlike the JS client). If PostgREST returns no rows (Prefer: minimal), select
+    the row we just inserted by yak_id + text + user_id.
+    """
+    r = supabase.table("yak_comments").insert(payload).execute()
+    rows = list(r.data) if r.data else []
+    if not rows:
+        q = (
+            supabase.table("yak_comments")
+            .select("*")
+            .eq("yak_id", payload["yak_id"])
+            .eq("text", payload["text"])
+            .order("created_at", desc=True)
+            .limit(1)
+        )
+        uid = payload.get("user_id")
+        if uid:
+            q = q.eq("user_id", uid)
+        r2 = q.execute()
+        rows = list(r2.data) if r2.data else []
+    return SimpleNamespace(data=rows)
+
+
 def _insert_yak_comment_row(payload: dict):
     """Insert comment; retry without optional columns if the DB predates a migration."""
     try:
-        return supabase.table("yak_comments").insert(payload).execute()
+        return _yak_comment_insert(payload)
     except Exception as e:
         err = str(e).lower()
-        if "author_name" in err and ("does not exist" in err or "42703" in err):
+        missing_col = "42703" in err or "does not exist" in err or "could not find" in err or "pgrst204" in err
+        if "user_id" in payload and ("user_id" in err and missing_col):
+            payload = {k: v for k, v in payload.items() if k != "user_id"}
+            return _yak_comment_insert(payload)
+        if "author_name" in payload and ("author_name" in err and missing_col):
             payload = {k: v for k, v in payload.items() if k != "author_name"}
-            return supabase.table("yak_comments").insert(payload).execute()
-        if "parent_id" in err and ("does not exist" in err or "42703" in err):
+            return _yak_comment_insert(payload)
+        if "parent_id" in payload and ("parent_id" in err and missing_col):
             payload = {k: v for k, v in payload.items() if k != "parent_id"}
-            return supabase.table("yak_comments").insert(payload).execute()
+            return _yak_comment_insert(payload)
         raise
 
 
+def _comment_id_for_db(comment_id: str):
+    """Match PostgREST/bigint ids from URL (e.g. '14') to DB type."""
+    return int(comment_id) if str(comment_id).isdigit() else comment_id
+
+
+def _detail_if_yak_comment_votes_missing(exc: BaseException) -> Optional[str]:
+    s = str(exc)
+    if "PGRST205" in s or ("yak_comment_votes" in s and "schema cache" in s):
+        return (
+            "Table yak_comment_votes is missing. In Supabase → SQL Editor run "
+            "backend/supabase_yak_comment_votes_only_bigint.sql, then try voting again."
+        )
+    return None
+
+
 def _sync_comment_vote_total(comment_id: str) -> int:
+    cid = _comment_id_for_db(comment_id)
     votes_sum_resp = (
         supabase.table("yak_comment_votes")
         .select("vote_value")
-        .eq("comment_id", comment_id)
+        .eq("comment_id", cid)
         .execute()
     )
     new_votes = sum(v["vote_value"] for v in (votes_sum_resp.data or []))
-    supabase.table("yak_comments").update({"votes": new_votes}).eq("id", comment_id).execute()
+    try:
+        supabase.table("yak_comments").update({"votes": new_votes}).eq("id", cid).execute()
+    except Exception as e:
+        s = str(e)
+        # Optional denormalized column — list endpoint aggregates from yak_comment_votes anyway.
+        if "PGRST204" in s and "votes" in s and "yak_comments" in s:
+            pass
+        else:
+            raise
     return new_votes
 
 
@@ -562,24 +616,29 @@ def get_yak_comments(yak_id: str, authorization: Optional[str] = Header(None)):
         )
         rows = r.data or []
         user_id = get_user_id_from_token(authorization)
+        totals: dict = {}
         user_votes: dict = {}
-        if user_id and rows:
+        if rows:
             ids = [row["id"] for row in rows]
             try:
                 vr = (
                     supabase.table("yak_comment_votes")
-                    .select("comment_id, vote_value")
-                    .eq("user_id", user_id)
+                    .select("comment_id, vote_value, user_id")
                     .in_("comment_id", ids)
                     .execute()
                 )
-                user_votes = {
-                    v["comment_id"]: v["vote_value"] for v in (vr.data or [])
-                }
+                totals = defaultdict(int)
+                for v in vr.data or []:
+                    cid = v["comment_id"]
+                    totals[cid] += v["vote_value"]
+                    if user_id and str(v.get("user_id")) == str(user_id):
+                        user_votes[cid] = v["vote_value"]
             except Exception as ex:
                 print(f"yak_comment_votes lookup skipped: {ex}")
         for row in rows:
-            row["user_vote"] = user_votes.get(row["id"], 0)
+            rid = row["id"]
+            row["votes"] = totals.get(rid, row.get("votes", 0))
+            row["user_vote"] = user_votes.get(rid, 0)
         return rows
     except HTTPException:
         raise
@@ -602,11 +661,12 @@ def vote_yak_comment(
     if not user_id:
         raise HTTPException(status_code=401, detail="Authentication required to vote")
 
+    cid = _comment_id_for_db(comment_id)
     try:
         c = (
             supabase.table("yak_comments")
             .select("id, yak_id")
-            .eq("id", comment_id)
+            .eq("id", cid)
             .single()
             .execute()
         )
@@ -615,13 +675,13 @@ def vote_yak_comment(
 
         if body.vote_value == 0:
             supabase.table("yak_comment_votes").delete().eq("user_id", user_id).eq(
-                "comment_id", comment_id
+                "comment_id", cid
             ).execute()
         else:
             supabase.table("yak_comment_votes").upsert(
                 {
                     "user_id": user_id,
-                    "comment_id": comment_id,
+                    "comment_id": cid,
                     "vote_value": body.vote_value,
                 },
                 on_conflict="user_id,comment_id",
@@ -633,9 +693,12 @@ def vote_yak_comment(
         raise
     except Exception as e:
         print(f"Error voting on comment: {e}")
+        missing = _detail_if_yak_comment_votes_missing(e)
+        if missing:
+            raise HTTPException(status_code=500, detail=missing) from e
         raise HTTPException(
             status_code=500,
-            detail="Failed to update comment vote. Run backend/supabase_yak_comments.sql in Supabase.",
+            detail="Failed to update comment vote. Check Supabase logs and RLS on yak_comment_votes.",
         ) from e
 
 
@@ -652,30 +715,44 @@ def post_yak_comment(
         raise HTTPException(status_code=400, detail="Comment too long")
 
     uid = get_user_id_from_token(authorization)
-    author_name = _anon_display_name(uid) if uid else "Anonymous"
+    if not uid:
+        raise HTTPException(
+            status_code=401,
+            detail="Sign in to post comments.",
+        )
+    author_name = _anon_display_name(uid)
 
     try:
         yak_check = supabase.table("yaks").select("id, comments").eq("id", yak_id).single().execute()
         if not yak_check.data:
             raise HTTPException(status_code=404, detail="Yak not found")
 
-        parent_id = (body.parent_id or "").strip() or None
-        if parent_id:
+        parent_raw = (body.parent_id or "").strip() or None
+        parent_id: Optional[str] = None
+        if parent_raw:
+            parent_id = str(int(parent_raw)) if parent_raw.isdigit() else parent_raw
+            pid_lookup = int(parent_raw) if parent_raw.isdigit() else parent_raw
             parent = (
                 supabase.table("yak_comments")
                 .select("id, yak_id")
-                .eq("id", parent_id)
+                .eq("id", pid_lookup)
                 .single()
                 .execute()
             )
             if not parent.data or parent.data.get("yak_id") != yak_id:
                 raise HTTPException(status_code=400, detail="Invalid parent comment")
 
-        ins_payload: dict = {"yak_id": yak_id, "text": text}
+        # Many Supabase schemas require user_id NOT NULL; repo SQL uses uuid id + optional author_name.
+        ins_payload: dict = {
+            "yak_id": yak_id,
+            "text": text,
+            "user_id": uid,
+        }
         if author_name:
             ins_payload["author_name"] = author_name
-        if parent_id:
-            ins_payload["parent_id"] = parent_id
+        if parent_id is not None:
+            # Use int for bigint FKs when numeric (API body may send string)
+            ins_payload["parent_id"] = int(parent_id) if str(parent_id).isdigit() else parent_id
 
         ins = _insert_yak_comment_row(ins_payload)
         if not ins.data:
@@ -693,8 +770,29 @@ def post_yak_comment(
     except HTTPException:
         raise
     except Exception as e:
+        err = str(e).lower()
         print(f"Error posting comment: {e}")
-        raise HTTPException(status_code=500, detail="Failed to post comment") from e
+        if "null value" in err and "user_id" in err:
+            raise HTTPException(
+                status_code=401,
+                detail="Sign in to post comments.",
+            ) from e
+        if "23503" in err or "foreign key" in err:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid comment data (check yak/thread).",
+            ) from e
+        if "row-level security" in err or "42501" in err or "permission denied" in err:
+            raise HTTPException(
+                status_code=500,
+                detail="Database blocked the insert (RLS). In Supabase, add INSERT policy on yak_comments for role anon (see backend/supabase_yak_comments.sql).",
+            ) from e
+        # Short server-side detail so you can fix schema without guessing
+        hint = str(e).replace("\n", " ")[:380]
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to post comment: {hint}",
+        ) from e
 
 
 @app.get("/leaderboard", response_model=LeaderboardResponse)
