@@ -99,100 +99,103 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-app font-sans relative">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Everything behind the composer */}
+      <div className={`transition-[filter,transform] duration-200 ${composing ? "compose-blur" : ""}`}>
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Ambient blobs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
-        <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
-      </div>
+        {/* Ambient blobs */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
+          <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
+        </div>
 
-      {/* Top nav */}
-      <div className="sticky top-0 z-50 bg-app/60 backdrop-blur-2xl border-b border-white/20">
-        <div className="max-w-[600px] mx-auto px-5">
-          <div className="flex items-center justify-between h-14">
-            {/* Left: hamburger + logo */}
-            <div className="flex items-center gap-3.5">
-              <button onClick={() => setSidebarOpen(true)} className="flex flex-col gap-1 p-1 group">
-                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
-                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
-                <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
-              </button>
-              <div className="flex items-center gap-2">
-                <img src="/tamid-logo.png" alt="TaYak" className="w-7 h-7 rounded-xs object-cover" />
-                <span className="font-extrabold text-[18px] text-txt-primary tracking-tight">TaYak</span>
-              </div>
-            </div>
-
-            {/* Right: tab pills */}
-            <div ref={tabContainerRef} className="relative flex items-center liquid-glass p-[3px]">
-              {/* Sliding glass indicator */}
-              <div
-                className="absolute top-[3px] h-[calc(100%-6px)] liquid-glass-pill pointer-events-none"
-                style={{
-                  left: indicator.left,
-                  width: indicator.width,
-                  transition: "left 280ms cubic-bezier(0.4, 0, 0.2, 1), width 280ms cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              />
-              {tabs.map(t => (
-                <button
-                  key={t.key}
-                  ref={el => { tabRefs.current[t.key] = el; }}
-                  onClick={() => setTab(t.key)}
-                  className={`relative z-10 px-4 py-[6px] text-body-sm rounded-full transition-colors duration-200 ${
-                    tab === t.key
-                      ? "text-txt-primary font-semibold"
-                      : "text-txt-secondary hover:text-txt-primary"
-                  }`}
-                >
-                  {t.label}
+        {/* Top nav */}
+        <div className="sticky top-0 z-50 bg-app/60 backdrop-blur-2xl border-b border-white/20">
+          <div className="max-w-[600px] mx-auto px-5">
+            <div className="flex items-center justify-between h-14">
+              {/* Left: hamburger + logo */}
+              <div className="flex items-center gap-3.5">
+                <button onClick={() => setSidebarOpen(true)} className="flex flex-col gap-1 p-1 group">
+                  <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
+                  <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
+                  <span className="w-[22px] h-[2px] bg-txt-secondary rounded-full block group-hover:bg-txt-primary transition-colors duration-[120ms]" />
                 </button>
-              ))}
+                <div className="flex items-center gap-2">
+                  <img src="/tamid-logo.png" alt="TaYak" className="w-7 h-7 rounded-xs object-cover" />
+                  <span className="font-extrabold text-[18px] text-txt-primary tracking-tight">TaYak</span>
+                </div>
+              </div>
+
+              {/* Right: tab pills */}
+              <div ref={tabContainerRef} className="relative flex items-center liquid-glass p-[3px]">
+                {/* Sliding glass indicator */}
+                <div
+                  className="absolute top-[3px] h-[calc(100%-6px)] liquid-glass-pill pointer-events-none"
+                  style={{
+                    left: indicator.left,
+                    width: indicator.width,
+                    transition: "left 280ms cubic-bezier(0.4, 0, 0.2, 1), width 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  }}
+                />
+                {tabs.map(t => (
+                  <button
+                    key={t.key}
+                    ref={el => { tabRefs.current[t.key] = el; }}
+                    onClick={() => setTab(t.key)}
+                    className={`relative z-10 px-4 py-[6px] text-body-sm rounded-full transition-colors duration-200 ${
+                      tab === t.key
+                        ? "text-txt-primary font-semibold"
+                        : "text-txt-secondary hover:text-txt-primary"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Feed */}
-      <div className="relative z-10 max-w-[600px] mx-auto">
-        <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
-          {loading ? (
-            <div className="text-center text-txt-secondary py-16 text-body-md">
-              Loading yaks...
-            </div>
-          ) : displayYaks.length === 0 ? (
-            <div className="text-center text-txt-secondary py-16 text-body-md">
-              No yaks yet. Be the first.
-            </div>
-          ) : displayYaks.map((yak, i) => (
-            <YakCard
-              key={yak.id}
-              yak={{
-                ...yak,
-                time: getRelativeTime(yak.created_at),
-                profile_pic: yak.profile_pic || getAvatarForId(yak.id),
-                color: yak.color || getColorForId(yak.id),
-              }}
-              onVote={handleVote}
-              isLast={i === displayYaks.length - 1}
-            />
-          ))}
+        {/* Feed */}
+        <div className="relative z-10 max-w-[600px] mx-auto">
+          <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
+            {loading ? (
+              <div className="text-center text-txt-secondary py-16 text-body-md">
+                Loading yaks...
+              </div>
+            ) : displayYaks.length === 0 ? (
+              <div className="text-center text-txt-secondary py-16 text-body-md">
+                No yaks yet. Be the first.
+              </div>
+            ) : displayYaks.map((yak, i) => (
+              <YakCard
+                key={yak.id}
+                yak={{
+                  ...yak,
+                  time: getRelativeTime(yak.created_at),
+                  profile_pic: yak.profile_pic || getAvatarForId(yak.id),
+                  color: yak.color || getColorForId(yak.id),
+                }}
+                onVote={handleVote}
+                isLast={i === displayYaks.length - 1}
+              />
+            ))}
+          </div>
+          {/* Bottom spacer for FAB */}
+          <div className="h-24" />
         </div>
-        {/* Bottom spacer for FAB */}
-        <div className="h-24" />
-      </div>
 
-      {/* FAB */}
-      <button
-        onClick={() => setComposing(true)}
-        className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
+        {/* FAB */}
+        <button
+          onClick={() => setComposing(true)}
+          className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Compose modal */}
       {composing && (
