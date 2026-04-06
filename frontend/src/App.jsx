@@ -416,7 +416,7 @@ export default function App() {
       {commentsYak && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/16"
+            className="absolute inset-0 bg-black/20 backdrop-blur-md"
             onClick={() => { if (!postingComment) closeComments(); }}
           />
           <div className="relative w-full sm:max-w-[480px] max-h-[85vh] flex flex-col bg-card border border-[#ECEDEF] sm:rounded-md rounded-t-md shadow-card mx-0 sm:mx-4 animate-toast-in">
