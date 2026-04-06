@@ -59,7 +59,14 @@ const YakCard = ({ yak, onVote, isLast }) => {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <span className="text-caption text-txt-tertiary">{yak.time} ago</span>
+          <div className="flex items-center gap-2">
+            <span className="text-caption text-txt-tertiary">{yak.time} ago</span>
+            {yak.topic && (
+              <span className="text-caption font-medium px-2 py-0.5 rounded-full bg-[#2F79F7]/10 text-[#2F79F7] border border-[#2F79F7]/20">
+                {yak.topic}
+              </span>
+            )}
+          </div>
           <p className="text-body-md text-txt-primary mt-1 break-words whitespace-pre-wrap leading-relaxed">
             {yak.text}
           </p>
@@ -118,14 +125,19 @@ const YakCard = ({ yak, onVote, isLast }) => {
 
 const MAX_CHARS = 255;
 
+const TOPICS = ["General", "Tech", "Finance", "Culture", "Sports", "Politics", "Career", "Random"];
+
 export default function App() {
   const [tab, setTab] = useState("new");
   const [yaks, setYaks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [postText, setPostText] = useState("");
+  const [postTopic, setPostTopic] = useState("General");
+  const [customTopic, setCustomTopic] = useState("");
   const [posting, setPosting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [filterTopic, setFilterTopic] = useState("All");
 
   const tabContainerRef = useRef(null);
   const tabRefs = useRef({});
@@ -164,17 +176,20 @@ export default function App() {
   const handlePost = async () => {
     const trimmed = postText.trim();
     if (!trimmed || trimmed.length > MAX_CHARS) return;
+    const topic = postTopic === "__custom__" ? (customTopic.trim() || "General") : postTopic;
     setPosting(true);
     try {
       const res = await fetch(`${API}/yaks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: trimmed }),
+        body: JSON.stringify({ text: trimmed, topic }),
       });
       if (!res.ok) throw new Error("Post failed");
       const newYak = await res.json();
       setYaks(prev => [newYak, ...prev]);
       setPostText("");
+      setPostTopic("General");
+      setCustomTopic("");
       setComposing(false);
     } catch (e) {
       console.error("Failed to create yak", e);
@@ -183,9 +198,12 @@ export default function App() {
     }
   };
 
-  const trendingYaks = [...yaks].sort((a, b) => b.votes - a.votes);
-  const newYaks = [...yaks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  const filteredYaks = filterTopic === "All" ? yaks : yaks.filter(y => (y.topic || "General") === filterTopic);
+  const trendingYaks = [...filteredYaks].sort((a, b) => b.votes - a.votes);
+  const newYaks = [...filteredYaks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const displayYaks = tab === "new" ? newYaks : trendingYaks;
+
+  const activeTopics = ["All", ...Array.from(new Set(yaks.map(y => y.topic || "General")))].sort((a, b) => a === "All" ? -1 : b === "All" ? 1 : a.localeCompare(b));
 
   const handleVote = async (id, voteValue, delta) => {
     setYaks(prev => prev.map(y => y.id === id ? { ...y, votes: y.votes + delta, user_vote: voteValue } : y));
@@ -267,6 +285,27 @@ export default function App() {
         </div>
       </div>
 
+      {/* Topic filter chips */}
+      <div className="sticky top-14 z-40 bg-app/60 backdrop-blur-2xl border-b border-white/20">
+        <div className="max-w-[600px] mx-auto px-4">
+          <div className="flex items-center gap-2 py-2.5 overflow-x-auto no-scrollbar">
+            {activeTopics.map(t => (
+              <button
+                key={t}
+                onClick={() => setFilterTopic(t)}
+                className={`shrink-0 px-3 py-1 rounded-full text-body-sm font-medium transition-colors duration-150 border ${
+                  filterTopic === t
+                    ? "bg-[#2F79F7] border-[#2F79F7] text-white"
+                    : "bg-card/70 border-[#ECEDEF] text-txt-secondary hover:text-txt-primary hover:border-[#C0C4CC]"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Feed */}
       <div className="relative z-10 max-w-[600px] mx-auto">
         <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
@@ -312,13 +351,13 @@ export default function App() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-black/16"
-            onClick={() => { if (!posting) { setComposing(false); setPostText(""); } }}
+            onClick={() => { if (!posting) { setComposing(false); setPostText(""); setPostTopic("General"); setCustomTopic(""); } }}
           />
           <div className="relative w-full sm:max-w-[480px] bg-card border border-[#ECEDEF] sm:rounded-md rounded-t-md shadow-card mx-0 sm:mx-4 animate-toast-in">
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
               <button
-                onClick={() => { if (!posting) { setComposing(false); setPostText(""); } }}
+                onClick={() => { if (!posting) { setComposing(false); setPostText(""); setPostTopic("General"); setCustomTopic(""); } }}
                 className="text-body-sm text-txt-secondary hover:text-txt-primary transition-colors duration-[120ms]"
               >
                 Cancel
@@ -346,6 +385,48 @@ export default function App() {
                 rows={4}
                 className="w-full resize-none bg-transparent text-body-md text-txt-primary placeholder:text-placeholder outline-none leading-relaxed"
               />
+            </div>
+
+            {/* Topic picker */}
+            <div className="px-5 pb-3 border-t border-[#ECEDEF] pt-3">
+              <p className="text-caption text-txt-tertiary mb-2">Topic</p>
+              <div className="flex flex-wrap gap-1.5">
+                {TOPICS.map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => { setPostTopic(t); setCustomTopic(""); }}
+                    className={`px-3 py-1 rounded-full text-body-sm font-medium border transition-colors duration-150 ${
+                      postTopic === t
+                        ? "bg-[#2F79F7] border-[#2F79F7] text-white"
+                        : "bg-transparent border-[#ECEDEF] text-txt-secondary hover:border-[#C0C4CC] hover:text-txt-primary"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPostTopic("__custom__")}
+                  className={`px-3 py-1 rounded-full text-body-sm font-medium border transition-colors duration-150 ${
+                    postTopic === "__custom__"
+                      ? "bg-[#2F79F7] border-[#2F79F7] text-white"
+                      : "bg-transparent border-[#ECEDEF] text-txt-secondary hover:border-[#C0C4CC] hover:text-txt-primary"
+                  }`}
+                >
+                  Other…
+                </button>
+              </div>
+              {postTopic === "__custom__" && (
+                <input
+                  autoFocus
+                  type="text"
+                  value={customTopic}
+                  onChange={e => setCustomTopic(e.target.value.slice(0, 40))}
+                  placeholder="Enter topic"
+                  className="mt-2 w-full bg-transparent border border-[#ECEDEF] rounded-xs px-3 py-1.5 text-body-sm text-txt-primary placeholder:text-placeholder outline-none focus:border-[#2F79F7] transition-colors duration-150"
+                />
+              )}
             </div>
 
             {/* Footer */}
