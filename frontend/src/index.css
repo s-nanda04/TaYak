@@ -12,9 +12,19 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* When composing a post, softly blur and lift the background
+   so the editor feels more focused and foregrounded. */
+.compose-blur {
+  filter: blur(8px);
+  transform: scale(1.01);
+}
+
 input::placeholder {
   color: #A4A8AF;
 }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ── Apple Liquid Glass ─────────────────────────────────
    Near-transparent base; the visual magic is all in the
