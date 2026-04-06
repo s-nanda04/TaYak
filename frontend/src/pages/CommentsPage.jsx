@@ -118,95 +118,98 @@ export default function CommentsPage() {
 
   return (
     <div className="min-h-screen bg-app font-sans relative">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
-        <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
-      </div>
+      {/* Everything behind the composer */}
+      <div className={`transition-[filter,transform] duration-200 ${composing ? "compose-blur" : ""}`}>
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          <div className="absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-blob-blue/25 blur-[80px] animate-blob-drift" />
+          <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full bg-blob-soft/35 blur-[70px] animate-blob-drift-2" />
+        </div>
 
-      <div className="sticky top-0 z-50 bg-app/60 backdrop-blur-2xl border-b border-white/20">
-        <div className="max-w-[600px] mx-auto px-5">
-          <div className="flex items-center gap-3.5 h-14">
-            <button
-              onClick={() => navigate("/feed")}
-              className="p-1 group"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-txt-secondary group-hover:text-txt-primary transition-colors duration-[120ms]">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-            </button>
-            <div className="flex items-center gap-2">
-              <img src="/tamid-logo.png" alt="TaYak" className="w-7 h-7 rounded-xs object-cover" />
-              <span className="font-extrabold text-[18px] text-txt-primary tracking-tight">TaYak</span>
+        <div className="sticky top-0 z-50 bg-app/60 backdrop-blur-2xl border-b border-white/20">
+          <div className="max-w-[600px] mx-auto px-5">
+            <div className="flex items-center gap-3.5 h-14">
+              <button
+                onClick={() => navigate("/feed")}
+                className="p-1 group"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-txt-secondary group-hover:text-txt-primary transition-colors duration-[120ms]">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <div className="flex items-center gap-2">
+                <img src="/tamid-logo.png" alt="TaYak" className="w-7 h-7 rounded-xs object-cover" />
+                <span className="font-extrabold text-[18px] text-txt-primary tracking-tight">TaYak</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="relative z-10 max-w-[600px] mx-auto">
-        {loading ? (
-          <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
-            <div className="text-center text-txt-secondary py-16 text-body-md">
-              Loading...
-            </div>
-          </div>
-        ) : !yak ? (
-          <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
-            <div className="text-center text-txt-secondary py-16 text-body-md">
-              Post not found.
-            </div>
-          </div>
-        ) : (
-          <>
+        <div className="relative z-10 max-w-[600px] mx-auto">
+          {loading ? (
             <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
-              <YakCard
-                yak={{
-                  ...yak,
-                  time: getRelativeTime(yak.created_at),
-                  profile_pic: yak.profile_pic || getAvatarForId(yak.id),
-                  color: yak.color || getColorForId(yak.id),
-                }}
-                onVote={handleVote}
-                isLast
-                hideCommentNav
-              />
-            </div>
-
-            <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
-              <div className="px-5 py-3 border-b border-subtle">
-                <span className="font-semibold text-body-sm text-txt-primary">
-                  {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
-                </span>
+              <div className="text-center text-txt-secondary py-16 text-body-md">
+                Loading...
               </div>
-              {comments.length === 0 ? (
-                <div className="text-center text-txt-secondary py-12 text-body-md">
-                  No comments yet. Be the first.
-                </div>
-              ) : comments.map((c, i) => (
-                <CommentCard
-                  key={c.id}
-                  comment={{
-                    ...c,
-                    time: getRelativeTime(c.created_at),
-                    profile_pic: getAvatarForId(String(c.id)),
-                    color: getColorForId(String(c.id)),
-                  }}
-                  isLast={i === comments.length - 1}
-                />
-              ))}
             </div>
-          </>
-        )}
-        <div className="h-24" />
-      </div>
+          ) : !yak ? (
+            <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
+              <div className="text-center text-txt-secondary py-16 text-body-md">
+                Post not found.
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
+                <YakCard
+                  yak={{
+                    ...yak,
+                    time: getRelativeTime(yak.created_at),
+                    profile_pic: yak.profile_pic || getAvatarForId(yak.id),
+                    color: yak.color || getColorForId(yak.id),
+                  }}
+                  onVote={handleVote}
+                  isLast
+                  hideCommentNav
+                />
+              </div>
 
-      <button
-        onClick={() => { setError(""); setComposing(true); }}
-        className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-        </svg>
-      </button>
+              <div className="mt-3 mx-3 md:mx-0 bg-card/80 backdrop-blur-sm border border-[#ECEDEF] rounded-md shadow-card overflow-hidden">
+                <div className="px-5 py-3 border-b border-subtle">
+                  <span className="font-semibold text-body-sm text-txt-primary">
+                    {comments.length} {comments.length === 1 ? "Comment" : "Comments"}
+                  </span>
+                </div>
+                {comments.length === 0 ? (
+                  <div className="text-center text-txt-secondary py-12 text-body-md">
+                    No comments yet. Be the first.
+                  </div>
+                ) : comments.map((c, i) => (
+                  <CommentCard
+                    key={c.id}
+                    comment={{
+                      ...c,
+                      time: getRelativeTime(c.created_at),
+                      profile_pic: getAvatarForId(String(c.id)),
+                      color: getColorForId(String(c.id)),
+                    }}
+                    isLast={i === comments.length - 1}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+          <div className="h-24" />
+        </div>
+
+        <button
+          onClick={() => { setError(""); setComposing(true); }}
+          className="fixed bottom-7 right-5 md:right-[calc(50%-280px)] w-14 h-14 liquid-glass-fab flex items-center justify-center z-50"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444A55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+          </svg>
+        </button>
+      </div>
 
       {composing && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
