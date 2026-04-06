@@ -54,6 +54,10 @@ class YakCreate(BaseModel):
     author_name: Optional[str] = None
 
 
+class CommentCreate(BaseModel):
+    text: str
+
+
 class LeaderboardResponse(BaseModel):
     top_contributors: List[dict]
     top_topics: List[dict]
@@ -246,6 +250,52 @@ def vote_yak(yak_id: str, body: VoteRequest, authorization: Optional[str] = Head
     except Exception as e:
         print(f"Error voting: {e}")
         raise HTTPException(status_code=500, detail="Failed to update vote") from e
+
+
+@app.get("/yaks/{yak_id}/comments")
+def get_comments(yak_id: str):
+    try:
+        response = (
+            supabase.table("yak_comments")
+            .select("*")
+            .eq("yak_id", yak_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return response.data or []
+    except Exception as e:
+        print(f"Error fetching comments: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch comments") from e
+
+
+@app.post("/yaks/{yak_id}/comments")
+def create_comment(yak_id: str, body: CommentCreate, authorization: Optional[str] = Header(None)):
+    user_id = get_user_id_from_token(authorization)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required to comment")
+
+    try:
+        yak_check = supabase.table("yaks").select("id, comments").eq("id", yak_id).single().execute()
+        if not yak_check.data:
+            raise HTTPException(status_code=404, detail="Yak not found")
+
+        response = (
+            supabase.table("yak_comments")
+            .insert({"text": body.text, "user_id": user_id, "yak_id": yak_id})
+            .execute()
+        )
+        if not response.data:
+            raise HTTPException(status_code=500, detail="Failed to create comment")
+
+        new_count = (yak_check.data.get("comments") or 0) + 1
+        supabase.table("yaks").update({"comments": new_count}).eq("id", yak_id).execute()
+
+        return response.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creating comment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create comment") from e
 
 
 @app.get("/leaderboard", response_model=LeaderboardResponse)
